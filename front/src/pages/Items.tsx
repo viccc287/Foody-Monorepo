@@ -129,7 +129,7 @@ const saveItem = async (item: Item): Promise<Item> => {
   });
   if (!response.ok) throw new Error("Error al guardar el artículo");
 
-  return { ...item, id: item.id || 10 };
+  return { ...item };
 };
 
 const createItem = async (values: FormValues): Promise<Item> => {

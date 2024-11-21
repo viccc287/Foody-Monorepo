@@ -41,12 +41,25 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Agent } from "@/types";
+import { useToast } from "@/hooks/use-toast";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
+interface FormValues {
+  name: string;
+  lastName: string;
+  image: File | string;
+  address: string;
+  phone: string;
+  rfc: string;
+  email: string;
+  pin: string;
+  role: string;
+  isActive: boolean;
+}
+
 const formSchema = z.object({
-  id: z.number(),
   name: z.string().trim().min(1, "Nombre requerido"),
   lastName: z.string().trim().min(1, "Apellidos requeridos"),
   image: z
@@ -75,49 +88,6 @@ const formSchema = z.object({
   isActive: z.boolean(),
 });
 
-const initialAgents: Agent[] = [
-  {
-    id: "1",
-    name: "Ángeles",
-    lastName: "Altez",
-    image:
-      "https://www.georgetown.edu/wp-content/uploads/2022/02/Jkramerheadshot-scaled-e1645036825432-1050x1050-c-default.jpg",
-    address: "Brisas 123, Col. Centro, Ciudad",
-    phone: "1234567890",
-    rfc: "ABCD123456XYZ",
-    email: "angie@example.com",
-    pin: "1234",
-    role: "admin",
-    isActive: true,
-  },
-  {
-    id: "2",
-    name: "Eugenia",
-    lastName: "Morales",
-    image: "",
-    address: "Brisas 123, Col. Centro, Ciudad",
-    phone: "0987654321",
-    rfc: "EFGH789012UVW",
-    email: "euge@example.com",
-    pin: "5678",
-    role: "cashier",
-    isActive: true,
-  },
-  {
-    id: "3",
-    name: "Marcos",
-    lastName: "Cruz",
-    image: "https://www.despejandodudas.co/images/2021/Noviembre/Mesero_2.jpg",
-    address: "Pinos 123, Col. Centro, Ciudad",
-    phone: "0987654321",
-    rfc: "EFGH789012UVW",
-    email: "marquitos@example.com",
-    pin: "5678",
-    role: "waiter",
-    isActive: true,
-  },
-];
-
 const roles = [
   { name: "Administrador", value: "admin" },
   { name: "Cajero", value: "cashier" },
@@ -126,15 +96,38 @@ const roles = [
 ];
 
 const fetchAgents = async (): Promise<Agent[]> => {
-  // Simulate API call
-  await new Promise((resolve) => setTimeout(resolve, 500));
-  return initialAgents;
+  const response = await fetch("http://localhost:3000/agents");
+  const data: Agent[] = await response.json();
+  return data;
+};
+
+const createAgent = async (values: FormValues): Promise<Agent> => {
+  const response = await fetch("http://localhost:3000/agents", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(values),
+  });
+
+  if (!response.ok) throw new Error("Error al crear el agente");
+
+  const data: Agent = await response.json();
+  return { ...values, id: data.id } as Agent;
 };
 
 const saveAgent = async (agent: Agent): Promise<Agent> => {
-  // Simulate API call
-  await new Promise((resolve) => setTimeout(resolve, 500));
-  return { ...agent, id: agent.id || initialAgents.length + 1 };
+  const response = await fetch("http://localhost:3000/agents/" + agent.id, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(agent),
+  });
+
+  if (!response.ok) throw new Error("Error al guardar el agente");
+
+  return { ...agent };
 };
 
 export default function AgentPage() {
@@ -143,8 +136,16 @@ export default function AgentPage() {
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [showPin, setShowPin] = useState(false);
+  const { toast } = useToast();
 
-  const defaultValues = {
+  const alert = (title: string, description: string, status?: string) =>
+    toast({
+      title,
+      description,
+      variant: status === "error" ? "destructive" : "default",
+    });
+
+  const defaultValues: FormValues = {
     name: "",
     lastName: "",
     image: "",
@@ -166,30 +167,66 @@ export default function AgentPage() {
     fetchAgents().then(setAgents);
   }, []);
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    let imageUrl = values.image;
+  const uploadImage = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append("image", file);
 
-    if (values.image instanceof File) {
-      // Here you would typically upload the file to your server or a cloud storage service
-      // and get back the URL. For this example, we'll create a local object URL.
-      imageUrl = URL.createObjectURL(values.image);
-    }
-
-    const savedAgent = await saveAgent({
-      ...values,
-      id: editingAgent?.id || initialAgents.length + 1,
-      image: imageUrl as string,
+    const response = await fetch("http://localhost:3000/agents/upload-image", {
+      method: "POST",
+      body: formData,
     });
 
-    setAgents((prev) =>
-      editingAgent
-        ? prev.map((agent) => (agent.id === savedAgent.id ? savedAgent : agent))
-        : [...prev, savedAgent]
-    );
-    setIsDialogOpen(false);
-    setEditingAgent(null);
-    setImagePreview(null);
-    form.reset(defaultValues);
+    if (!response.ok) {
+      throw new Error("Failed to upload image");
+    }
+
+    const { imageUrl } = await response.json();
+    return imageUrl;
+  };
+
+  // Modified onSubmit handler
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    try {
+      const imageUrl =
+        values.image instanceof File
+          ? await uploadImage(values.image)
+          : values.image;
+
+      if (!editingAgent) {
+        const newAgent = await createAgent({
+          ...values,
+          image: imageUrl,
+        });
+        setAgents([...agents, newAgent]);
+        alert(
+          "Agente creado",
+          "El agente ha sido creado correctamente"
+        );
+      } else {
+        const updatedAgent = await saveAgent({
+          ...values,
+          id: editingAgent.id,
+          image: imageUrl,
+        });
+        setAgents(
+          agents.map((agent) =>
+            agent.id === updatedAgent.id ? updatedAgent : agent
+          )
+        );
+        alert("Agente actualizado", "Agente actualizado correctamente");
+      }
+
+      setIsDialogOpen(false);
+      setEditingAgent(null);
+      setImagePreview(null);
+      form.reset(defaultValues);
+    } catch (error) {
+      let message = "Error desconocido";
+      if (error instanceof Error) {
+        message = error.message;
+      }
+      alert("Error", message, "error");
+    }
   };
 
   const handleEdit = (agent: Agent) => {
@@ -436,7 +473,9 @@ export default function AgentPage() {
             <CardHeader>
               <CardTitle>{`${agent.name} ${agent.lastName}`}</CardTitle>
               <CardDescription>
-                {roles.find((role) => role.value === agent.role)?.name}
+                {agent.id +
+                  " - " +
+                  roles.find((role) => role.value === agent.role)?.name}
               </CardDescription>
             </CardHeader>
             <CardContent>

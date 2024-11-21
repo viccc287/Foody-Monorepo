@@ -52,10 +52,9 @@ router.post("/", (req, res) => {
   )
 
   res.json({ id: result.lastInsertRowid });
-  console.log(`Item added by IP ${req.ip} at ${new Date().toLocaleDateString('es-MX')}`);
+  console.log(`Item ADDED by USER at ${new Date().toLocaleString('es-MX')}`);
 });
 
-// Update an existing item
 router.put("/:id", (req, res) => {
   const { id } = req.params;
   const {
@@ -93,6 +92,8 @@ router.put("/:id", (req, res) => {
 
   if (result.changes > 0) {
     res.json({ message: "Item updated successfully" });
+    console.log(`Item UPDATED by USER at ${new Date().toLocaleString('es-MX')}`);
+
   } else {
     res.status(404).json({ error: "Item not found" });
   }
@@ -106,6 +107,8 @@ router.delete("/:id", (req, res) => {
 
   if (result.changes > 0) {
     res.json({ message: "Item deleted successfully" });
+    console.log(`Item DELETED by USER at ${new Date().toLocaleString('es-MX')}`);
+
   } else {
     res.status(404).json({ error: "Item not found" });
   }
