@@ -31,9 +31,6 @@ router.post("/", (req, res) => {
     recipe,
     price,
   } = req.body;
-
-
-  console.log(name, quantity, unit, isActive, family, supplier, printLocations, variablePrice, recipe, price);
   
 
   const stmt = db.prepare(
@@ -55,7 +52,7 @@ router.post("/", (req, res) => {
   )
 
   res.json({ id: result.lastInsertRowid });
-  console.log("Item added successfully: " + JSON.stringify(result));
+  console.log(`Item added by IP ${req.ip} at ${new Date().toLocaleDateString('es-MX')}`);
 });
 
 // Update an existing item
