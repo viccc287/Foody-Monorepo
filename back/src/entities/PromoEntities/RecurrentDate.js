@@ -1,10 +1,12 @@
 import db from "../../database/connection";
 
+
 class RecurrentDate {
     static tableName = "RecurrentDate";
 
-    constructor({ id, days_of_week, startTime, endTime }) {
+    constructor({ id, promoId, days_of_week, startTime, endTime }) {
         this.id = id || null;
+        this.promoId = promoId;
         this.days_of_week = days_of_week;
         this.startTime = startTime;
         this.endTime = endTime;
@@ -22,21 +24,27 @@ class RecurrentDate {
         return row ? new RecurrentDate(row) : null;
     }
 
+    static getByPromoId(promoId) {
+        const stmt = db.prepare(`SELECT * FROM ${this.tableName} WHERE promoId = ?`);
+        const rows = stmt.all(promoId);
+        return rows.map((row) => new RecurrentDate(row));
+    }
+
     save() {
         if (this.id) {
             const stmt = db.prepare(
                 `UPDATE ${RecurrentDate.tableName}
-                SET days_of_week = ?, startTime = ?, endTime = ?
+                SET promoId = ?, days_of_week = ?, startTime = ?, endTime = ?
                 WHERE id = ?`
             );
-            const result = stmt.run(this.days_of_week, this.startTime, this.endTime, this.id);
+            const result = stmt.run(this.promoId, this.days_of_week, this.startTime, this.endTime, this.id);
             return result.changes > 0;
         } else {
             const stmt = db.prepare(
-                `INSERT INTO ${RecurrentDate.tableName} (days_of_week, startTime, endTime)
-                VALUES (?, ?, ?)`
+                `INSERT INTO ${RecurrentDate.tableName} (promoId, days_of_week, startTime, endTime)
+                VALUES (?, ?, ?, ?)`
             );
-            const result = stmt.run(this.days_of_week, this.startTime, this.endTime);
+            const result = stmt.run(this.promoId, this.days_of_week, this.startTime, this.endTime);
             this.id = result.lastInsertRowid;
             return this.id;
         }

@@ -82,7 +82,7 @@ router.delete("/:id", (req, res) => {
  * ================= Routes for OrderItems ================= 
  */
 
-// Get all order items just for testing purposes
+// Get all order items just for testing purposesz
 router.get("/order-items", (req, res) => {
     try {
         const orderItems = OrderItem.getAll();

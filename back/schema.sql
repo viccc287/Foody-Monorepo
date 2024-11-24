@@ -104,17 +104,18 @@ CREATE TABLE IF NOT EXISTS Promo (
     percentage DECIMAL DEFAULT 0,
     always BOOLEAN DEFAULT 0,
     isActive BOOLEAN DEFAULT 1,
-    recurrentDateId INTEGER,
     name TEXT NOT NULL,
-    FOREIGN KEY (menuItemId) REFERENCES MenuItem (id),
-    FOREIGN KEY (recurrentDateId) REFERENCES RecurrentDate (id)
+    FOREIGN KEY (menuItemId) REFERENCES MenuItem (id)
 );
 
 
-CREATE TABLE IF NOT EXISTS RecurrentDate (
+
+CREATE TABLE RecurrentDate (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    days_of_week TEXT NOT NULL, -- Example: "Monday;Tuesday"
+    promoId INTEGER NOT NULL,
+    days_of_week TEXT NOT NULL,
     startTime TIME NOT NULL,
-    endTime TIME NOT NULL
+    endTime TIME NOT NULL,
+    FOREIGN KEY (promoId) REFERENCES Promo (id)
 );
 
