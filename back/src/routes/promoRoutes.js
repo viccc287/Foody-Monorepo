@@ -4,7 +4,6 @@ import RecurrentDate from "../entities/PromoEntities/RecurrentDate";
 
 const router = Router();
 
-
 /**
  * ================ Routes for Promo ================
  */
@@ -15,10 +14,9 @@ router.get("/", (req, res) => {
         const promos = Promo.getAll();
         res.json(promos);
     } catch (error) {
-        res.status(500).json({ error: "Failed to fetch promotions." });
+        res.status(500).json({ error: "Failed to fetch promotions. " + error.message });
     }
 });
-
 
 // Create a new promotion with availability days and times
 router.post("/promos-with-availability", (req, res) => {
@@ -44,8 +42,6 @@ router.post("/promos-with-availability", (req, res) => {
         if (availability) {
             const recurrentDays = Object.entries(availability);
 
-            console.log(recurrentDays);
-            
             recurrentDays.forEach(([day, times]) => {
                 if (times && times.startTime && times.endTime) {
                     const recurrentDate = new RecurrentDate({
@@ -54,10 +50,6 @@ router.post("/promos-with-availability", (req, res) => {
                         startTime: times.startTime,
                         endTime: times.endTime,
                     });
-                    console.log('Saving recurrent date');
-                    
-                    console.log(recurrentDate);
-                    
                     recurrentDate.save();
                 }
             });
@@ -70,7 +62,6 @@ router.post("/promos-with-availability", (req, res) => {
     }
 });
 
-
 // Get a specific promotion by ID
 router.get("/:id", (req, res) => {
     try {
@@ -82,7 +73,7 @@ router.get("/:id", (req, res) => {
             res.status(404).json({ error: "Promotion not found." });
         }
     } catch (error) {
-        res.status(500).json({ error: "Failed to fetch promotion." });
+        res.status(500).json({ error: "Failed to fetch promotion. " + error.message });
     }
 });
 
@@ -93,7 +84,7 @@ router.post("/", (req, res) => {
         const id = promo.save();
         res.status(201).json({ id });
     } catch (error) {
-        res.status(500).json({ error: "Failed to create promotion. " + error });
+        res.status(500).json({ error: "Failed to create promotion. " + error.message });
     }
 });
 
@@ -110,7 +101,7 @@ router.put("/:id", (req, res) => {
             res.status(404).json({ error: "Promotion not found." });
         }
     } catch (error) {
-        res.status(500).json({ error: "Failed to update promotion." });
+        res.status(500).json({ error: "Failed to update promotion. " + error.message });
     }
 });
 
@@ -126,7 +117,7 @@ router.delete("/:id", (req, res) => {
             res.status(404).json({ error: "Promotion not found." });
         }
     } catch (error) {
-        res.status(500).json({ error: "Failed to delete promotion." });
+        res.status(500).json({ error: "Failed to delete promotion. " + error.message });
     }
 });
 
@@ -146,7 +137,7 @@ router.get("/:id/recurrence-rules", (req, res) => {
             res.status(404).json({ error: "Promotion not found." });
         }
     } catch (error) {
-        res.status(500).json({ error: "Failed to fetch recurrence rules." });
+        res.status(500).json({ error: "Failed to fetch recurrence rules. " + error.message });
     }
 });
 
@@ -166,7 +157,7 @@ router.post("/:id/recurrence-rules", (req, res) => {
             res.status(404).json({ error: "Promotion not found." });
         }
     } catch (error) {
-        res.status(500).json({ error: "Failed to create recurrence rule." });
+        res.status(500).json({ error: "Failed to create recurrence rule. " + error.message });
     }
 });
 
@@ -183,7 +174,7 @@ router.put("/recurrence-rules/:id", (req, res) => {
             res.status(404).json({ error: "Recurrence rule not found." });
         }
     } catch (error) {
-        res.status(500).json({ error: "Failed to update recurrence rule." });
+        res.status(500).json({ error: "Failed to update recurrence rule. " + error.message });
     }
 });
 
@@ -199,15 +190,11 @@ router.delete("/promos/recurrence-rules/:id", (req, res) => {
             res.status(404).json({ error: "Recurrence rule not found." });
         }
     } catch (error) {
-        res.status(500).json({ error: "Failed to delete recurrence rule." });
+        res.status(500).json({ error: "Failed to delete recurrence rule. " + error.message });
     }
 });
 
-
-
 // ============ Recurrent dates routes ==============
-
-
 
 // Get all recurrent dates
 router.get("/recurrent-dates", (req, res) => {
@@ -215,7 +202,7 @@ router.get("/recurrent-dates", (req, res) => {
         const recurrentDates = RecurrentDate.getAll();
         res.json(recurrentDates);
     } catch (error) {
-        res.status(500).json({ error: "Failed to fetch recurrent dates." });
+        res.status(500).json({ error: "Failed to fetch recurrent dates. " + error.message });
     }
 });
 
@@ -226,7 +213,7 @@ router.get("/recurrent-dates/promo/:promoId", (req, res) => {
         const recurrentDates = RecurrentDate.getByPromoId(Number(promoId));
         res.json(recurrentDates);
     } catch (error) {
-        res.status(500).json({ error: "Failed to fetch recurrent dates for promo." });
+        res.status(500).json({ error: "Failed to fetch recurrent dates for promo. " + error.message });
     }
 });
 
@@ -237,7 +224,7 @@ router.post("/recurrent-dates", (req, res) => {
         const id = recurrentDate.save();
         res.status(201).json({ id });
     } catch (error) {
-        res.status(500).json({ error: "Failed to create recurrent date." });
+        res.status(500).json({ error: "Failed to create recurrent date. " + error.message });
     }
 });
 
@@ -254,7 +241,7 @@ router.put("/recurrent-dates/:id", (req, res) => {
             res.status(404).json({ error: "RecurrentDate not found." });
         }
     } catch (error) {
-        res.status(500).json({ error: "Failed to update recurrent date." });
+        res.status(500).json({ error: "Failed to update recurrent date. " + error.message });
     }
 });
 
@@ -270,9 +257,8 @@ router.delete("/recurrent-dates/:id", (req, res) => {
             res.status(404).json({ error: "RecurrentDate not found." });
         }
     } catch (error) {
-        res.status(500).json({ error: "Failed to delete recurrent date." });
+        res.status(500).json({ error: "Failed to delete recurrent date. " + error.message });
     }
 });
 
 export default router;
-

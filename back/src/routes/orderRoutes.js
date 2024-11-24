@@ -14,7 +14,7 @@ router.get("/", (req, res) => {
         const orders = Order.getAll();
         res.json(orders);
     } catch (error) {
-        res.status(500).json({ error: "Failed to fetch orders." });
+        res.status(500).json({ error: "Failed to fetch orders. " + error.message });
     }
 });
 
@@ -29,7 +29,7 @@ router.get("/:id", (req, res) => {
             res.status(404).json({ error: "Order not found." });
         }
     } catch (error) {
-        res.status(500).json({ error: "Failed to fetch order." });
+        res.status(500).json({ error: "Failed to fetch order. " + error.message });
     }
 });
 
@@ -40,7 +40,7 @@ router.post("/", (req, res) => {
         const id = order.save();
         res.status(201).json({ id });
     } catch (error) {
-        res.status(500).json({ error: "Failed to create order. " + error});
+        res.status(500).json({ error: "Failed to create order. " + error.message });
     }
 });
 
@@ -57,7 +57,7 @@ router.put("/:id", (req, res) => {
             res.status(404).json({ error: "Order not found." });
         }
     } catch (error) {
-        res.status(500).json({ error: "Failed to update order." });
+        res.status(500).json({ error: "Failed to update order. " + error.message });
     }
 });
 
@@ -73,22 +73,21 @@ router.delete("/:id", (req, res) => {
             res.status(404).json({ error: "Order not found." });
         }
     } catch (error) {
-        res.status(500).json({ error: "Failed to delete order." });
+        res.status(500).json({ error: "Failed to delete order. " + error.message });
     }
 });
-
 
 /**
  * ================= Routes for OrderItems ================= 
  */
 
-// Get all order items just for testing purposesz
+// Get all order items just for testing purposes
 router.get("/order-items", (req, res) => {
     try {
         const orderItems = OrderItem.getAll();
         res.json(orderItems);
     } catch (error) {
-        res.status(500).json({ error: "Failed to fetch order items." });
+        res.status(500).json({ error: "Failed to fetch order items. " + error.message });
     }
 });
 
@@ -99,7 +98,7 @@ router.get("/order-items/order/:orderId", (req, res) => {
         const orderItems = OrderItem.getByOrderId(Number(orderId));
         res.json(orderItems);
     } catch (error) {
-        res.status(500).json({ error: "Failed to fetch order items for the order." });
+        res.status(500).json({ error: "Failed to fetch order items for the order. " + error.message });
     }
 });
 
@@ -110,7 +109,7 @@ router.post("/order-items", (req, res) => {
         const id = orderItem.save();
         res.status(201).json({ id });
     } catch (error) {
-        res.status(500).json({ error: "Failed to create order item." });
+        res.status(500).json({ error: "Failed to create order item. " + error.message });
     }
 });
 
@@ -127,7 +126,7 @@ router.put("/order-items/:id", (req, res) => {
             res.status(404).json({ error: "OrderItem not found." });
         }
     } catch (error) {
-        res.status(500).json({ error: "Failed to update order item." });
+        res.status(500).json({ error: "Failed to update order item. " + error.message });
     }
 });
 
@@ -143,9 +142,8 @@ router.delete("/order-items/:id", (req, res) => {
             res.status(404).json({ error: "OrderItem not found." });
         }
     } catch (error) {
-        res.status(500).json({ error: "Failed to delete order item." });
+        res.status(500).json({ error: "Failed to delete order item. " + error.message });
     }
 });
-
 
 export default router;

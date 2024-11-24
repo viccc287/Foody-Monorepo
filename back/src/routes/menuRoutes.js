@@ -15,7 +15,7 @@ router.get("/menu-items", (req, res) => {
         const menuItems = MenuItem.getAll();
         res.json(menuItems);
     } catch (error) {
-        res.status(500).json({ error: "Failed to fetch menu items." });
+        res.status(500).json({ error: "Failed to fetch menu items. " + error.message });
     }
 });
 
@@ -30,7 +30,7 @@ router.get("/menu-items/:id", (req, res) => {
             res.status(404).json({ error: "MenuItem not found." });
         }
     } catch (error) {
-        res.status(500).json({ error: "Failed to fetch menu item." });
+        res.status(500).json({ error: "Failed to fetch menu item. " + error.message });
     }
 });
 
@@ -59,7 +59,7 @@ router.get("/menu-items/:id/ingredients", (req, res) => {
             res.status(404).json({ error: "MenuItem not found." });
         }
     } catch (error) {
-        res.status(500).json({ error: "Failed to fetch menu item." });
+        res.status(500).json({ error: "Failed to fetch menu item. " + error.message });
     }
 });
 
@@ -70,7 +70,7 @@ router.post("/menu-items", (req, res) => {
         const id = menuItem.save();
         res.status(201).json({ id });
     } catch (error) {
-        res.status(500).json({ error: "Failed to create menu item." });
+        res.status(500).json({ error: "Failed to create menu item. " + error.message });
     }
 });
 
@@ -88,7 +88,7 @@ router.put("/menu-items/:id", (req, res) => {
             res.status(404).json({ error: "MenuItem not found." });
         }
     } catch (error) {
-        res.status(500).json({ error: "Failed to update menu item." });
+        res.status(500).json({ error: "Failed to update menu item. " + error.message });
     }
 });
 
@@ -104,7 +104,7 @@ router.delete("/menu-items/:id", (req, res) => {
             res.status(404).json({ error: "MenuItem not found." });
         }
     } catch (error) {
-        res.status(500).json({ error: "Failed to delete menu item." });
+        res.status(500).json({ error: "Failed to delete menu item. " + error.message });
     }
 });
 
@@ -118,7 +118,7 @@ router.get("/ingredients", (req, res) => {
         const ingredients = Ingredient.getAll();
         res.json(ingredients);
     } catch (error) {
-        res.status(500).json({ error: "Failed to fetch ingredients." });
+        res.status(500).json({ error: "Failed to fetch ingredients. " + error.message });
     }
 });
 
@@ -129,7 +129,7 @@ router.get("/ingredients/menu-item/:menuItemId", (req, res) => {
         const ingredients = Ingredient.getByMenuItemId(Number(menuItemId));
         res.json(ingredients);
     } catch (error) {
-        res.status(500).json({ error: "Failed to fetch ingredients." });
+        res.status(500).json({ error: "Failed to fetch ingredients. " + error.message });
     }
 });
 
@@ -140,20 +140,18 @@ router.post("/ingredients", (req, res) => {
 
         const menuItem = MenuItem.getById(ingredient.menuItemId);
         if (!menuItem) {
-            res.status(404).json({ error: "Menu item not found." });
-            return;
+            return res.status(404).json({ error: "MenuItem not found." });
         }
 
         const inventoryProduct = StockItem.getById(ingredient.inventoryProductId);
         if (!inventoryProduct) {
-            res.status(404).json({ error: "Inventory product not found." });
-            return;
+            return res.status(404).json({ error: "Inventory product not found." });
         }
 
         const id = ingredient.save();
         res.status(201).json({ id });
     } catch (error) {
-        res.status(500).json({ error: "Failed to add ingredient." });
+        res.status(500).json({ error: "Failed to create ingredient. " + error.message });
     }
 });
 
@@ -162,7 +160,6 @@ router.put("/ingredients/:id", (req, res) => {
     try {
         const { id } = req.params;
         const ingredient = Ingredient.getById(Number(id));
-
         if (ingredient) {
             Object.assign(ingredient, req.body);
             ingredient.save();
@@ -171,7 +168,7 @@ router.put("/ingredients/:id", (req, res) => {
             res.status(404).json({ error: "Ingredient not found." });
         }
     } catch (error) {
-        res.status(500).json({ error: "Failed to update ingredient." });
+        res.status(500).json({ error: "Failed to update ingredient. " + error.message });
     }
 });
 
@@ -180,7 +177,6 @@ router.delete("/ingredients/:id", (req, res) => {
     try {
         const { id } = req.params;
         const ingredient = Ingredient.getById(Number(id));
-
         if (ingredient) {
             ingredient.delete();
             res.json({ message: "Ingredient deleted successfully." });
@@ -188,7 +184,7 @@ router.delete("/ingredients/:id", (req, res) => {
             res.status(404).json({ error: "Ingredient not found." });
         }
     } catch (error) {
-        res.status(500).json({ error: "Failed to delete ingredient." });
+        res.status(500).json({ error: "Failed to delete ingredient. " + error.message });
     }
 });
 
@@ -202,7 +198,7 @@ router.get("/stock-items", (req, res) => {
         const stockItems = StockItem.getAll();
         res.json(stockItems);
     } catch (error) {
-        res.status(500).json({ error: "Failed to fetch stock items." });
+        res.status(500).json({ error: "Failed to fetch stock items. " + error.message });
     }
 });
 
@@ -211,61 +207,58 @@ router.get("/stock-items/:id", (req, res) => {
     try {
         const { id } = req.params;
         const stockItem = StockItem.getById(Number(id));
-
         if (stockItem) {
             res.json(stockItem);
         } else {
             res.status(404).json({ error: "StockItem not found." });
         }
     } catch (error) {
-        res.status(500).json({ error: "Failed to fetch stock item." });
+        res.status(500).json({ error: "Failed to fetch stock item. " + error.message });
     }
 });
 
 // Create a new stock item
 router.post("/stock-items", (req, res) => {
-try {
-    const stockItem = new StockItem(req.body);
-    const id = stockItem.save();
-    res.status(201).json({ id });
-} catch (error) {
-    res.status(500).json({ error: "Failed to create stock item." + error });
-}
+    try {
+        const stockItem = new StockItem(req.body);
+        const id = stockItem.save();
+        res.status(201).json({ id });
+    } catch (error) {
+        res.status(500).json({ error: "Failed to create stock item. " + error.message });
+    }
 });
 
 // Update an existing stock item
 router.put("/stock-items/:id", (req, res) => {
-try {
-    const { id } = req.params;
-    const stockItem = StockItem.getById(Number(id));
-
-    if (stockItem) {
-        Object.assign(stockItem, req.body);
-        stockItem.save();
-        res.json({ message: "StockItem updated successfully." });
-    } else {
-        res.status(404).json({ error: "StockItem not found." });
+    try {
+        const { id } = req.params;
+        const stockItem = StockItem.getById(Number(id));
+        if (stockItem) {
+            Object.assign(stockItem, req.body);
+            stockItem.save();
+            res.json({ message: "StockItem updated successfully." });
+        } else {
+            res.status(404).json({ error: "StockItem not found." });
+        }
+    } catch (error) {
+        res.status(500).json({ error: "Failed to update stock item. " + error.message });
     }
-} catch (error) {
-    res.status(500).json({ error: "Failed to update stock item." });
-}
 });
 
 // Delete a stock item
 router.delete("/stock-items/:id", (req, res) => {
-try {
-    const { id } = req.params;
-    const stockItem = StockItem.getById(Number(id));
-
-    if (stockItem) {
-        stockItem.delete();
-        res.json({ message: "StockItem deleted successfully." });
-    } else {
-        res.status(404).json({ error: "StockItem not found." });
+    try {
+        const { id } = req.params;
+        const stockItem = StockItem.getById(Number(id));
+        if (stockItem) {
+            stockItem.delete();
+            res.json({ message: "StockItem deleted successfully." });
+        } else {
+            res.status(404).json({ error: "StockItem not found." });
+        }
+    } catch (error) {
+        res.status(500).json({ error: "Failed to delete stock item. " + error.message });
     }
-} catch (error) {
-    res.status(500).json({ error: "Failed to delete stock item." });
-}
 });
 
 export default router;
