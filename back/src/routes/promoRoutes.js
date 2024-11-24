@@ -1,19 +1,16 @@
 import { Router } from "express";
 import Promo from "../entities/PromoEntities/Promo";
+import RecurrentDate from "../entities/PromoEntities/RecurrentDate";
 
 const router = Router();
 
-import { Router } from "express";
-import Promo from "../models/Promo";
-import RecurrentDate from "../models/RecurrentDate";
-
 
 /**
- * Routes for Promo
+ * ================ Routes for Promo ================
  */
 
 // Get all promotions
-router.get("/promos", (req, res) => {
+router.get("/", (req, res) => {
     try {
         const promos = Promo.getAll();
         res.json(promos);
@@ -23,7 +20,7 @@ router.get("/promos", (req, res) => {
 });
 
 // Get a specific promotion by ID
-router.get("/promos/:id", (req, res) => {
+router.get("/:id", (req, res) => {
     try {
         const { id } = req.params;
         const promo = Promo.getById(Number(id));
@@ -38,7 +35,7 @@ router.get("/promos/:id", (req, res) => {
 });
 
 // Create a new promotion
-router.post("/promos", (req, res) => {
+router.post("/", (req, res) => {
     try {
         const promo = new Promo(req.body);
         const id = promo.save();
@@ -49,7 +46,7 @@ router.post("/promos", (req, res) => {
 });
 
 // Update an existing promotion
-router.put("/promos/:id", (req, res) => {
+router.put("/:id", (req, res) => {
     try {
         const { id } = req.params;
         const promo = Promo.getById(Number(id));
@@ -66,7 +63,7 @@ router.put("/promos/:id", (req, res) => {
 });
 
 // Delete a promotion and its associated recurrence rules
-router.delete("/promos/:id", (req, res) => {
+router.delete("/:id", (req, res) => {
     try {
         const { id } = req.params;
         const promo = Promo.getById(Number(id));
@@ -86,7 +83,7 @@ router.delete("/promos/:id", (req, res) => {
  */
 
 // Get all recurrence rules for a specific promotion
-router.get("/promos/:id/recurrence-rules", (req, res) => {
+router.get("/:id/recurrence-rules", (req, res) => {
     try {
         const { id } = req.params;
         const promo = Promo.getById(Number(id));
@@ -102,7 +99,7 @@ router.get("/promos/:id/recurrence-rules", (req, res) => {
 });
 
 // Create a new recurrence rule for a specific promotion
-router.post("/promos/:id/recurrence-rules", (req, res) => {
+router.post("/:id/recurrence-rules", (req, res) => {
     try {
         const { id } = req.params;
         const promo = Promo.getById(Number(id));
@@ -122,7 +119,7 @@ router.post("/promos/:id/recurrence-rules", (req, res) => {
 });
 
 // Update a recurrence rule
-router.put("/promos/recurrence-rules/:id", (req, res) => {
+router.put("/recurrence-rules/:id", (req, res) => {
     try {
         const { id } = req.params;
         const recurrenceRule = RecurrentDate.getById(Number(id));
