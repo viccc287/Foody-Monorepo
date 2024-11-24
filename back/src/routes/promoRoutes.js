@@ -19,6 +19,58 @@ router.get("/", (req, res) => {
     }
 });
 
+
+// Create a new promotion with availability days and times
+router.post("/promos-with-availability", (req, res) => {
+    try {
+        const { availability, ...promoData } = req.body;
+
+        // Ensure dates are properly formatted
+        promoData.startDate = promoData.startDate ? new Date(promoData.startDate).toISOString() : null;
+        promoData.endDate = promoData.endDate ? new Date(promoData.endDate).toISOString() : null;
+
+        // Replace undefined values with null for optional fields
+        promoData.buy_quantity = promoData.buy_quantity ?? null;
+        promoData.pay_quantity = promoData.pay_quantity ?? null;
+        promoData.discount = promoData.discount ?? null;
+        promoData.percentage = promoData.percentage ?? null;
+
+        // Step 1: Create the Promo
+        const promo = new Promo(promoData);
+        promo.save();
+        const promoId = promo.id;
+
+        // Step 2: Process Availability (Recurrent Dates)
+        if (availability) {
+            const recurrentDays = Object.entries(availability);
+
+            console.log(recurrentDays);
+            
+            recurrentDays.forEach(([day, times]) => {
+                if (times && times.startTime && times.endTime) {
+                    const recurrentDate = new RecurrentDate({
+                        promoId,
+                        days_of_week: day.charAt(0).toUpperCase() + day.slice(1), // Capitalize day
+                        startTime: times.startTime,
+                        endTime: times.endTime,
+                    });
+                    console.log('Saving recurrent date');
+                    
+                    console.log(recurrentDate);
+                    
+                    recurrentDate.save();
+                }
+            });
+        }
+
+        res.status(201).json({ promoId, message: "Promo and availability created successfully." });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: `Failed to create promo and availability. ${error.message}` });
+    }
+});
+
+
 // Get a specific promotion by ID
 router.get("/:id", (req, res) => {
     try {
@@ -41,7 +93,7 @@ router.post("/", (req, res) => {
         const id = promo.save();
         res.status(201).json({ id });
     } catch (error) {
-        res.status(500).json({ error: "Failed to create promotion." });
+        res.status(500).json({ error: "Failed to create promotion. " + error });
     }
 });
 
