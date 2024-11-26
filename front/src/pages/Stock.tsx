@@ -139,7 +139,6 @@ const createItem = async (values: FormValues): Promise<Item> => {
 
   if (!response.ok) throw new Error("Error al crear el artículo");
     const data = await response.json();
-    console.log(data.id);
     
   return { ...values, id: data.id };
 };
@@ -232,9 +231,7 @@ export default function Stock() {
     }
   };
 
-    const handleEdit = (item: Item) => {
-      console.log(item);
-      
+    const handleEdit = (item: Item) => {      
     setEditingItem(item);
     form.reset(item);
     setIsDialogOpen(true);

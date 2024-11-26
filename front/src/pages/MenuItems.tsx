@@ -145,7 +145,6 @@ const FETCH_BASE_URL = "http://localhost:3000/menu";
 const fetchItems = async (): Promise<MenuItem[]> => {
   const response = await fetch(`${FETCH_BASE_URL}/menu-items-with-ingredients`);
   const data: MenuItem[] = await response.json();
-  console.log(data);
 
   return data;
 };
@@ -166,12 +165,10 @@ const saveItem = async (item: MenuItem): Promise<MenuItem> => {
     body: JSON.stringify(item),
   });
 
-  console.log("itemSave: ", item);
 
   if (!response.ok) throw new Error("Error al guardar el artículo");
 
   const data = await response.json();
-  console.log("dataSave: ", data);
 
   return data;
 };
@@ -192,7 +189,7 @@ const createItem = async (values: FormValues): Promise<MenuItem> => {
 };
 
 const deleteItem = async (id: number): Promise<void> => {
-  const response = await fetch(`${FETCH_BASE_URL}/menu-item/${id}`, {
+  const response = await fetch(`${FETCH_BASE_URL}/menu-items/${id}`, {
     method: "DELETE",
   });
   if (!response.ok) throw new Error("Error al eliminar el artículo");

@@ -1,17 +1,3 @@
-CREATE TABLE IF NOT EXISTS Item (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    quantity DECIMAL NOT NULL,
-    unit TEXT NOT NULL,
-    isActive BOOLEAN DEFAULT 1,
-    family TEXT NOT NULL,
-    supplier TEXT NOT NULL,
-    printLocations TEXT, 
-    variablePrice BOOLEAN DEFAULT 0,
-    recipe TEXT,
-    price DECIMAL NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS Agent (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -55,8 +41,8 @@ CREATE TABLE IF NOT EXISTS Ingredients (
     menuItemId INTEGER NOT NULL,
     inventoryProductId INTEGER NOT NULL,
     quantityUsed DECIMAL NOT NULL,
-    FOREIGN KEY (menuItemId) REFERENCES MenuItem (id),
-    FOREIGN KEY (inventoryProductId) REFERENCES StockItem (id)
+    FOREIGN KEY (menuItemId) REFERENCES MenuItem (id) ON DELETE CASCADE,
+    FOREIGN KEY (inventoryProductId) REFERENCES StockItem (id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS "Order" (
@@ -118,4 +104,5 @@ CREATE TABLE IF NOT EXISTS RecurrentDate (
     endTime TIME NOT NULL,
     FOREIGN KEY (promoId) REFERENCES Promo (id)
 );
+
 
