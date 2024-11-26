@@ -22,6 +22,12 @@ class Ingredient {
         return rows.map((row) => new Ingredient(row));
     }
 
+    static deleteByMenuItemId(menuItemId) {
+        const stmt = db.prepare(`DELETE FROM ${this.tableName} WHERE menuItemId = ?`);
+        const result = stmt.run(menuItemId);
+        return result.changes > 0;
+    }
+
     save() {
         if (this.id) {
             return this.#updateRecord();

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { PlusCircle, Pencil, Trash, DollarSign } from 'lucide-react';
+import { PlusCircle, Pencil, Trash, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -133,7 +133,7 @@ const formSchema = z.object({
   ingredients: z.array(
     z.object({
       inventoryProductId: z.number().min(1, "Ingrediente requerido"),
-      quantityUsed: z.number().min(0.01, "La cantidad debe ser mayor a 0"),
+      quantityUsed: z.number().min(0, "La cantidad debe ser mayor a 0"),
     })
   ),
 });
@@ -153,7 +153,7 @@ const fetchItems = async (): Promise<MenuItem[]> => {
 const fetchStockItems = async (): Promise<StockItem[]> => {
   const response = await fetch(`${FETCH_BASE_URL}/stock-items`);
   const data: StockItem[] = await response.json();
-  
+
   return data;
 };
 
@@ -166,11 +166,14 @@ const saveItem = async (item: MenuItem): Promise<MenuItem> => {
     body: JSON.stringify(item),
   });
 
-  console.log('item: ', item);
-  
+  console.log("itemSave: ", item);
+
   if (!response.ok) throw new Error("Error al guardar el artículo");
 
-  return { ...item };
+  const data = await response.json();
+  console.log("dataSave: ", data);
+
+  return data;
 };
 
 const createItem = async (values: FormValues): Promise<MenuItem> => {
@@ -182,28 +185,10 @@ const createItem = async (values: FormValues): Promise<MenuItem> => {
     body: JSON.stringify(values),
   });
 
-  
-
   if (!response.ok) throw new Error("Error al crear el artículo");
   const data = await response.json();
 
-  // Create ingredients
-  for (const ingredient of values.ingredients) {
-    console.log('ingredient: ', ingredient);
-    
-    await fetch(`${FETCH_BASE_URL}/ingredients`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        menuItemId: data.id,
-        ...ingredient,
-      }),
-    });
-  }
-
-  return { ...values, id: data.id };
+  return data;
 };
 
 const deleteItem = async (id: number): Promise<void> => {
@@ -248,7 +233,6 @@ export default function MenuItems() {
   useEffect(() => {
     fetchItems().then(setItems);
     fetchStockItems().then(setStockItems);
-    
   }, []);
 
   const onSubmit = async (values: FormValues) => {
@@ -261,7 +245,7 @@ export default function MenuItems() {
           "El artículo ha sido agregado correctamente"
         );
       } else {
-        const updatedItem = await saveItem({ ...values, id: editingItem.id } as MenuItem);
+        const updatedItem = await saveItem({ ...values, id: editingItem.id });
         const updatedItems = items.map((item) =>
           item.id === updatedItem.id ? updatedItem : item
         );
@@ -303,13 +287,7 @@ export default function MenuItems() {
 
   const handleEdit = (item: MenuItem) => {
     setEditingItem(item);
-    form.reset({
-      ...item,
-      ingredients: item.ingredients.map(ing => ({
-        inventoryProductId: ing.inventoryProductId,
-        quantityUsed: ing.quantityUsed,
-      })),
-    });
+    form.reset(item);
     setIsDialogOpen(true);
   };
 
@@ -328,7 +306,7 @@ export default function MenuItems() {
               <PlusCircle className="mr-2 h-4 w-4" /> Agregar artículo
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[720px]">
+          <DialogContent className="sm:max-w-[1000px]">
             <DialogHeader>
               <DialogTitle>
                 {editingItem ? "Editar" : "Agregar"} artículo
@@ -516,7 +494,10 @@ export default function MenuItems() {
                                       checked={field.value?.includes(location)}
                                       onCheckedChange={(checked) => {
                                         return checked
-                                          ? field.onChange([...field.value, location])
+                                          ? field.onChange([
+                                              ...field.value,
+                                              location,
+                                            ])
                                           : field.onChange(
                                               field.value?.filter(
                                                 (value) => value !== location
@@ -546,32 +527,44 @@ export default function MenuItems() {
                         <FormControl>
                           <div>
                             {field.value.map((ingredient, index) => (
-                              <div key={index} className="flex items-center space-x-2 mb-2">
+                              <div
+                                key={index}
+                                className="flex items-center gap-2 mb-4 flex-wrap md:flex-nowrap"
+                              >
                                 <Select
                                   value={ingredient.inventoryProductId.toString()}
                                   onValueChange={(value) => {
                                     const newIngredients = [...field.value];
-                                    newIngredients[index].inventoryProductId = parseInt(value);
+                                    newIngredients[index].inventoryProductId =
+                                      parseInt(value);
                                     field.onChange(newIngredients);
                                   }}
                                 >
                                   <SelectTrigger>
-                                    <SelectValue placeholder="Selecciona un ingrediente" />
+                                    <SelectValue
+                                      className="min-w-fit"
+                                      placeholder="Selecciona un ingrediente"
+                                    />
                                   </SelectTrigger>
                                   <SelectContent>
                                     {stockItems.map((item) => (
-                                      <SelectItem key={item.id} value={item.id.toString()}>
-                                        {item.name}
+                                      <SelectItem
+                                        key={item.id}
+                                        value={item.id.toString()}
+                                      >
+                                        {item.name} - {item.unit}
                                       </SelectItem>
                                     ))}
                                   </SelectContent>
                                 </Select>
+                               
                                 <Input
                                   type="number"
                                   value={ingredient.quantityUsed}
                                   onChange={(e) => {
                                     const newIngredients = [...field.value];
-                                    newIngredients[index].quantityUsed = parseFloat(e.target.value);
+                                    newIngredients[index].quantityUsed =
+                                      parseFloat(e.target.value);
                                     field.onChange(newIngredients);
                                   }}
                                   placeholder="Cantidad"
@@ -580,7 +573,9 @@ export default function MenuItems() {
                                   type="button"
                                   variant="destructive"
                                   onClick={() => {
-                                    const newIngredients = field.value.filter((_, i) => i !== index);
+                                    const newIngredients = field.value.filter(
+                                      (_, i) => i !== index
+                                    );
                                     field.onChange(newIngredients);
                                   }}
                                 >
@@ -591,10 +586,13 @@ export default function MenuItems() {
                             <Button
                               type="button"
                               onClick={() => {
-                                field.onChange([...field.value, { inventoryProductId: 0, quantityUsed: 0 }]);
+                                field.onChange([
+                                  ...field.value,
+                                  { inventoryProductId: 0, quantityUsed: 0 },
+                                ]);
                               }}
                             >
-                              Agregar Ingrediente
+                              Agregar otro ingrediente
                             </Button>
                           </div>
                         </FormControl>
@@ -696,11 +694,14 @@ export default function MenuItems() {
                   {item.isActive ? "Activo" : "Inactivo"}
                 </TableCell>
                 <TableCell>
-                  {item.ingredients.map((ing) => (
-                    <div key={ing.id}>
-                      {ing.stockItem.name}: {ing.quantityUsed} {ing.stockItem.unit}
-                    </div>
-                  ))}
+                  <ul>
+                    {item.ingredients.map((ing) => (                      
+                      <li key={ing.id}>
+                        {ing.stockItem.name}: {ing.quantityUsed}{" "}
+                        {ing.stockItem.unit}
+                      </li>
+                    ))}
+                  </ul>
                 </TableCell>
                 <TableCell>
                   <Button
@@ -726,4 +727,3 @@ export default function MenuItems() {
     </div>
   );
 }
-
