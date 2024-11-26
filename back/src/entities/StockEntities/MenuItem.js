@@ -8,7 +8,7 @@ class MenuItem {
         this.name = name;
         this.quantity = quantity;
         this.unit = unit;
-        this.isActive = isActive || false;
+        this.isActive = !!isActive;
         this.family = family;
         this.supplier = supplier;
         this.printLocations = Array.isArray(printLocations) ? printLocations : JSON.parse(printLocations || "[]");
@@ -33,7 +33,7 @@ class MenuItem {
             return this.#updateRecord();
         } else {
             this.id = this.#createRecord();
-            return true;
+            return this.id;
         }   
     }
 

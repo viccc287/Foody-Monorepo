@@ -34,6 +34,30 @@ router.get("/menu-items/:id", (req, res) => {
     }
 });
 
+// Get all menu items with their ingredients/stock info
+router.get("/menu-items-with-ingredients", (req, res) => {
+    try {
+        const menuItems = MenuItem.getAll();
+        const menuItemsWithIngredients = menuItems.map((menuItem) => {
+            const ingredients = Ingredient.getByMenuItemId(menuItem.id);
+            const ingredientsWithStockInfo = ingredients.map((ingredient) => {
+                const stockItem = StockItem.getById(ingredient.inventoryProductId);
+                return {
+                    ...ingredient,
+                    stockItem,
+                };
+            });
+            return {
+                ...menuItem,
+                ingredients: ingredientsWithStockInfo,
+            };
+        });
+        res.json(menuItemsWithIngredients);
+    } catch (error) {
+        res.status(500).json({ error: "Failed to fetch menu items with ingredients. " + error.message });
+    }
+});
+
 // Get a specific menu item by ID with its ingredients/stock info
 router.get("/menu-items/:id/ingredients", (req, res) => {
     try {

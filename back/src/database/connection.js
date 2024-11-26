@@ -3,7 +3,7 @@ import path from "path";
 const __dirname = path.resolve();
 import fs from "fs";
 
-const dbPath = path.resolve(__dirname, "../../database.sqlite");
+const dbPath = path.resolve(__dirname, "./database.sqlite");
 const db = new Database(dbPath);
 
 const schemaPath = path.resolve(__dirname, "./schema.sql");

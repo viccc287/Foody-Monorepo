@@ -1,4 +1,4 @@
-import { Boxes, ChevronUp, Home, User, Users } from "lucide-react";
+import { Boxes, ChevronUp, CupSoda, Home, User, Users } from "lucide-react";
 
 import {
   Sidebar,
@@ -28,15 +28,20 @@ const items = [
     icon: Home,
   },
   {
-    title: "Artículos",
-    url: "items",
+    title: "Artículos del menú",
+    url: "menu-items",
+    icon: CupSoda,
+  },
+  {
+    title: "Inventario/Insumos",
+    url: "stock",
     icon: Boxes,
   },
   {
     title: "Agentes",
     url: "agents",
     icon: Users,
-  }
+  },
 ];
 
 export function AppSidebar() {

@@ -1,22 +1,28 @@
 import { useState, useEffect } from "react";
 import { PlusCircle, Pencil, Trash, DollarSign } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  TableHeader,
+} from "@/components/ui/table";
 import {
   Form,
   FormControl,
@@ -26,24 +32,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import * as z from "zod";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-
-import { useToast } from "@/hooks/use-toast";
-
-import type { Item } from "@/types";
-
-const printLocations = ["Cocina", "Caja", "Barra"];
 
 const families = [
   "Alimentos",
@@ -59,6 +54,7 @@ const families = [
   "Cognac",
   "Otros",
 ];
+
 const suppliers = [
   "Tecate",
   "Corona",
@@ -80,47 +76,48 @@ const suppliers = [
   "Barrilito",
   "Proveedor Genérico",
 ];
+
 const units = ["pieza", "vaso", "botella", "kg", "g", "l", "ml"];
 
 interface FormValues {
   name: string;
-  quantity: number;
+  stock: number;
   unit: string;
   isActive: boolean;
   family: string;
   supplier: string;
-  printLocations: string[];
-  variablePrice: boolean;
-  recipe?: string;
-  price: number;
+  cost: number;
 }
 
 const formSchema = z.object({
   name: z.string().trim().min(1, "Nombre requerido"),
-  quantity: z
-    .number({ invalid_type_error: "Cantidad requerida" })
-    .min(1, "La cantidad debe ser mayor a 0"),
+  stock: z
+    .number({ invalid_type_error: "Stock requerido" })
+    .min(0, "El stock debe ser mayor o igual a 0"),
   unit: z.string().trim().min(1, "Unidad requerida"),
   isActive: z.boolean(),
   family: z.string().trim().min(1, "Familia requerida"),
   supplier: z.string().trim().min(1, "Proveedor requerido"),
-  printLocations: z.array(z.string()),
-  variablePrice: z.boolean(),
-  recipe: z.string().optional(),
-  price: z
-    .number({ invalid_type_error: "Precio requerido" })
-    .min(0, "El precio debe ser mayor o igual a 0")
-    .multipleOf(0.01, "El precio debe ser múltiplo de 0.01"),
+  cost: z
+    .number({ invalid_type_error: "Costo requerido" })
+    .min(0, "El costo debe ser mayor o igual a 0")
+    .multipleOf(0.01, "El costo debe ser múltiplo de 0.01"),
 });
 
+interface Item extends FormValues {
+  id: number;
+}
+
+const FETCH_BASE_URL = "http://localhost:3000/menu/stock-items";
+
 const fetchItems = async (): Promise<Item[]> => {
-  const response = await fetch("http://localhost:3000/items");
+  const response = await fetch(FETCH_BASE_URL);
   const data: Item[] = await response.json();
   return data;
 };
 
 const saveItem = async (item: Item): Promise<Item> => {
-  const response = await fetch("http://localhost:3000/items/" + item.id, {
+  const response = await fetch(`${FETCH_BASE_URL}/${item.id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -128,12 +125,11 @@ const saveItem = async (item: Item): Promise<Item> => {
     body: JSON.stringify(item),
   });
   if (!response.ok) throw new Error("Error al guardar el artículo");
-
-  return { ...item };
+  return item;
 };
 
 const createItem = async (values: FormValues): Promise<Item> => {
-  const response = await fetch("http://localhost:3000/items", {
+  const response = await fetch(FETCH_BASE_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -142,19 +138,20 @@ const createItem = async (values: FormValues): Promise<Item> => {
   });
 
   if (!response.ok) throw new Error("Error al crear el artículo");
-  const data = await response.json();
-
+    const data = await response.json();
+    console.log(data.id);
+    
   return { ...values, id: data.id };
 };
 
 const deleteItem = async (id: number): Promise<void> => {
-  const response = await fetch("http://localhost:3000/items/" + id, {
+  const response = await fetch(`${FETCH_BASE_URL}/${id}`, {
     method: "DELETE",
   });
   if (!response.ok) throw new Error("Error al eliminar el artículo");
 };
 
-export default function Items() {
+export default function Stock() {
   const [items, setItems] = useState<Item[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
@@ -169,15 +166,12 @@ export default function Items() {
 
   const defaultValues: FormValues = {
     name: "",
-    quantity: 1,
+    stock: 0,
     unit: "",
     isActive: true,
     family: "",
     supplier: "",
-    recipe: "",
-    printLocations: [],
-    variablePrice: false,
-    price: 0,
+    cost: 0,
   };
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -209,7 +203,6 @@ export default function Items() {
           "El artículo ha sido actualizado correctamente"
         );
       }
-
       setIsDialogOpen(false);
       setEditingItem(null);
       form.reset(defaultValues);
@@ -239,7 +232,9 @@ export default function Items() {
     }
   };
 
-  const handleEdit = (item: Item) => {
+    const handleEdit = (item: Item) => {
+      console.log(item);
+      
     setEditingItem(item);
     form.reset(item);
     setIsDialogOpen(true);
@@ -248,7 +243,7 @@ export default function Items() {
   return (
     <div className="container mx-auto py-10">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Artículos</h1>
+        <h1 className="text-3xl font-bold">Inventario</h1>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button
@@ -268,12 +263,12 @@ export default function Items() {
               <DialogDescription>
                 {editingItem
                   ? "Edita los detalles del artículo"
-                  : "Agrega un nuevo artículo"}
+                  : "Agrega un nuevo artículo al inventario"}
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
               <form
-                name="articleForm"
+                name="stockForm"
                 onSubmit={form.handleSubmit(onSubmit)}
                 className="flex flex-col space-y-4"
               >
@@ -286,8 +281,8 @@ export default function Items() {
                         <FormLabel>Nombre</FormLabel>
                         <FormControl>
                           <Input
-                            placeholder="Nombre del artículo"
                             {...field}
+                            placeholder="Nombre del artículo"
                             autoComplete="off"
                           />
                         </FormControl>
@@ -297,14 +292,15 @@ export default function Items() {
                   />
                   <FormField
                     control={form.control}
-                    name="quantity"
+                    name="stock"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Cantidad</FormLabel>
+                        <FormLabel>Cantidad en stock</FormLabel>
                         <FormControl>
                           <Input
-                            type="number"
                             {...field}
+                            type="number"
+                            placeholder="Cantidad en stock"
                             onChange={(e) =>
                               field.onChange(parseFloat(e.target.value))
                             }
@@ -320,41 +316,42 @@ export default function Items() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Unidad</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          name="unit"
-                        >
-                          <FormControl>
+                        <FormControl>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
                             <SelectTrigger>
                               <SelectValue placeholder="Selecciona una unidad" />
                             </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {units.map((unit) => (
-                              <SelectItem key={unit} value={unit}>
-                                {unit}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                            <SelectContent>
+                              {units.map((unit) => (
+                                <SelectItem key={unit} value={unit}>
+                                  {unit}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                   <FormField
                     control={form.control}
-                    name="price"
+                    name="cost"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Precio</FormLabel>
+                        <FormLabel>Costo por unidad</FormLabel>
                         <FormControl>
                           <div className="flex items-center gap-1">
                             <DollarSign size={16} />
+
                             <Input
-                              type="number"
-                              step="0.10"
                               {...field}
+                              type="number"
+                              step="0.01"
+                              placeholder="Costo unitario del artículo"
                               onChange={(e) =>
                                 field.onChange(parseFloat(e.target.value))
                               }
@@ -365,31 +362,29 @@ export default function Items() {
                       </FormItem>
                     )}
                   />
-
                   <FormField
                     control={form.control}
                     name="family"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Familia</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          name="family"
-                        >
-                          <FormControl>
+                        <FormControl>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
                             <SelectTrigger>
                               <SelectValue placeholder="Selecciona una familia" />
                             </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {families.map((family) => (
-                              <SelectItem key={family} value={family}>
-                                {family}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                            <SelectContent>
+                              {families.map((family) => (
+                                <SelectItem key={family} value={family}>
+                                  {family}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -400,112 +395,24 @@ export default function Items() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Proveedor</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          name="supplier"
-                        >
-                          <FormControl>
+                        <FormControl>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
                             <SelectTrigger>
                               <SelectValue placeholder="Selecciona un proveedor" />
                             </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {suppliers.map((supplier) => (
-                              <SelectItem key={supplier} value={supplier}>
-                                {supplier}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="printLocations"
-                    render={({ field }) => (
-                      <FormItem>
-                        <div className="mb-4">
-                          <FormLabel>Imprimir en</FormLabel>
-                          <FormDescription>
-                            Selecciona dónde quieres imprimir el ticket
-                          </FormDescription>
-                        </div>
-                        {printLocations.map((location) => (
-                          <FormField
-                            key={location}
-                            control={form.control}
-                            name="printLocations"
-                            render={({ field }) => {
-                              return (
-                                <FormItem
-                                  key={location}
-                                  className="flex flex-row items-start space-x-3 space-y-0"
-                                >
-                                  <FormControl>
-                                    <Checkbox
-                                      name={"printLocations-" + location}
-                                      checked={field.value?.includes(location)}
-                                      onCheckedChange={(checked) => {
-                                        return checked
-                                          ? field.onChange([
-                                              ...field.value,
-                                              location,
-                                            ])
-                                          : field.onChange(
-                                              field.value?.filter(
-                                                (value) => value !== location
-                                              )
-                                            );
-                                      }}
-                                    />
-                                  </FormControl>
-                                  <FormLabel className="font-normal">
-                                    {location}
-                                  </FormLabel>
-                                </FormItem>
-                              );
-                            }}
-                          />
-                        ))}
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="recipe"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Receta</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Insumos necesarios" {...field} />
+                            <SelectContent>
+                              {suppliers.map((supplier) => (
+                                <SelectItem key={supplier} value={supplier}>
+                                  {supplier}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </FormControl>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="variablePrice"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                        <FormControl>
-                          <Checkbox
-                            name="variablePrice"
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel>Precio variable</FormLabel>
-                          <FormDescription>
-                            Permitir cambiar el precio en ocasiones especiales
-                          </FormDescription>
-                        </div>
                       </FormItem>
                     )}
                   />
@@ -513,20 +420,14 @@ export default function Items() {
                     control={form.control}
                     name="isActive"
                     render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                      <FormItem className="flex flex-row items-center space-x-3">
                         <FormControl>
                           <Checkbox
-                            name="isActive"
                             checked={field.value}
                             onCheckedChange={field.onChange}
                           />
                         </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel>Activo</FormLabel>
-                          <FormDescription>
-                            ¿Este artículo está disponible?
-                          </FormDescription>
-                        </div>
+                        <FormLabel>Activo</FormLabel>
                       </FormItem>
                     )}
                   />
@@ -540,21 +441,19 @@ export default function Items() {
         </Dialog>
       </div>
       {items.length === 0 ? (
-        <div className="text-center">No hay artículos</div>
+        <div className="text-center">No hay artículos en el inventario</div>
       ) : (
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>ID</TableHead>
               <TableHead>Nombre</TableHead>
-              <TableHead>Cantidad</TableHead>
+              <TableHead>Stock</TableHead>
               <TableHead>Unidad</TableHead>
-              <TableHead>Precio</TableHead>
+              <TableHead>Costo</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead>Familia</TableHead>
               <TableHead>Proveedor</TableHead>
-              <TableHead>Imprimir en</TableHead>
-              <TableHead>Precio variable</TableHead>
               <TableHead>Acciones</TableHead>
             </TableRow>
           </TableHeader>
@@ -563,18 +462,12 @@ export default function Items() {
               <TableRow key={item.id}>
                 <TableCell>{item.id}</TableCell>
                 <TableCell>{item.name}</TableCell>
-                <TableCell>{item.quantity}</TableCell>
+                <TableCell>{item.stock}</TableCell>
                 <TableCell>{item.unit}</TableCell>
-                <TableCell>{item.price.toFixed(2)}</TableCell>
+                <TableCell>{item.cost.toFixed(2)}</TableCell>
                 <TableCell>{item.isActive ? "Activo" : "Inactivo"}</TableCell>
                 <TableCell>{item.family}</TableCell>
                 <TableCell>{item.supplier}</TableCell>
-                <TableCell>
-                  {item.printLocations.length > 0
-                    ? item.printLocations.join(", ")
-                    : "No imprimir"}
-                </TableCell>
-                <TableCell>{item.variablePrice ? "Sí" : "No"}</TableCell>
                 <TableCell>
                   <Button
                     variant="ghost"

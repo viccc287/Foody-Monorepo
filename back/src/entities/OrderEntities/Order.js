@@ -42,7 +42,7 @@ class Order {
             return this.#updateRecord();
         } else {
             this.id = this.#createRecord();
-            return true;
+            return this.id;
         }
     }
 

@@ -2,8 +2,9 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Toaster } from "@/components/ui/toaster"
-import Items from "@/pages/Items";
+import MenuItems from "@/pages/MenuItems";
 import Agents from "@/pages/Agents";
+import Stock from "./pages/Stock";
 
 
 export default function Layout() {
@@ -23,8 +24,10 @@ export default function Layout() {
                 </div>
               }
             />
-            <Route path="/items" element={<Items />} />
+            <Route path="/menu-items" element={<MenuItems />} />
             <Route path="/agents" element={<Agents />} />
+            <Route path="/stock" element={<Stock />} />
+
           </Routes>
         </main>
       </Router>

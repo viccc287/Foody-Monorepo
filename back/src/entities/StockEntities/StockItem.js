@@ -8,7 +8,7 @@ class StockItem {
         this.name = name;
         this.stock = stock;
         this.unit = unit;
-        this.isActive = isActive || false;
+        this.isActive = !!isActive;
         this.family = family;
         this.supplier = supplier;
         this.cost = cost;
@@ -31,7 +31,7 @@ class StockItem {
             return this.#updateRecord();
         } else {
             this.id = this.#createRecord();
-            return true;
+            return this.id;
         }
     }
 
