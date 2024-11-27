@@ -73,8 +73,8 @@ class Agent {
 
     static async authenticate(email, pin) {
         const agent = this.getByEmail(email);
-        if (!agent) throw new Error("Agent not found.");
-        if (agent.pin !== pin) throw new Error("Invalid PIN.");
+        if (!agent) return null;
+        if (agent.pin !== pin) return null;
         return agent;
     }
 }

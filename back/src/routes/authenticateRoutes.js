@@ -15,6 +15,11 @@ router.post("/", async (req, res) => {
     }
     try {
         let agent = await Agent.authenticate(email, pin);
+        if (!agent || agent.length === 0) {
+            return res.status(404).json({
+                message: 'Invalid credentials.',
+            });
+        }
         let payload = generateJwtPayload(agent.role, agent.email);
         let token = generateToken(payload,'24h');
         res.status(200).json({
