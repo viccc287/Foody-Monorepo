@@ -18,12 +18,12 @@ CREATE TABLE IF NOT EXISTS MenuItem (
     quantity DECIMAL NOT NULL,
     unit TEXT NOT NULL,
     isActive BOOLEAN DEFAULT 1,
-    familyId INTEGER NOT NULL,
+    categoryId INTEGER NOT NULL,
     printLocations TEXT, -- JSON string
     variablePrice BOOLEAN DEFAULT 0,
     price DECIMAL NOT NULL,
 
-    FOREIGN KEY (familyId) REFERENCES Category (id)
+    FOREIGN KEY (categoryId) REFERENCES Category (id)
 );
 
 CREATE TABLE IF NOT EXISTS StockItem (
@@ -32,12 +32,12 @@ CREATE TABLE IF NOT EXISTS StockItem (
     stock DECIMAL NOT NULL,
     unit TEXT NOT NULL,
     isActive BOOLEAN DEFAULT 1,
-    familyId INTEGER NOT NULL,
+    categoryId INTEGER NOT NULL,
     supplierId INTEGER NOT NULL,
     cost DECIMAL NOT NULL,
 
     FOREIGN KEY (supplierId) REFERENCES Supplier (id),
-    FOREIGN KEY (familyId) REFERENCES Category (id)
+    FOREIGN KEY (categoryId) REFERENCES Category (id)
 );
 
 CREATE TABLE IF NOT EXISTS Ingredients (

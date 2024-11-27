@@ -202,7 +202,7 @@ export default function Suppliers() {
               <PlusCircle className="mr-2 h-4 w-4" /> Agregar proveedor
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="sm:max-w-[1000px] overflow-y-auto max-h-[90svh]">
             <DialogHeader>
               <DialogTitle>
                 {editingSupplier ? "Editar" : "Agregar"} proveedor

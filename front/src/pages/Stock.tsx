@@ -15,7 +15,7 @@ import {
   FormField,
   FormItem,
   FormLabel,
-  FormMessage
+  FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
@@ -30,17 +30,12 @@ import {
   TableBody,
   TableCell,
   TableHeader,
-  TableRow
+  TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import useSortConfig from "@/lib/useSortConfig";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  DollarSign,
-  Edit2,
-  PlusCircle,
-  Trash2
-} from "lucide-react";
+import { DollarSign, Edit2, PlusCircle, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -86,8 +81,6 @@ const suppliers = [
 
 const units = ["pieza", "vaso", "botella", "kg", "g", "l", "ml"];
 
-
-
 const formSchema = z.object({
   name: z.string().trim().min(1, "Nombre requerido"),
   stock: z
@@ -95,14 +88,13 @@ const formSchema = z.object({
     .min(0, "El stock debe ser mayor o igual a 0"),
   unit: z.string().trim().min(1, "Unidad requerida"),
   isActive: z.boolean(),
-  family: z.string().trim().min(1, "Familia requerida"),
+  category: z.string().trim().min(1, "Categoría requerida"),
   supplier: z.string().trim().min(1, "Proveedor requerido"),
   cost: z
     .number({ invalid_type_error: "Costo requerido" })
     .min(0, "El costo debe ser mayor o igual a 0")
     .multipleOf(0.01, "El costo debe ser múltiplo de 0.01"),
 });
-
 
 const FETCH_BASE_URL = "http://localhost:3000/menu/stock-items";
 
@@ -153,7 +145,7 @@ const tableHeaderColumns: SortableColumn<StockItem>[] = [
   { key: "unit", label: "Unidad" },
   { key: "cost", label: "Costo" },
   { key: "isActive", label: "Estado" },
-  { key: "familyId", label: "Familia" },
+  { key: "categoryId", label: "Categoría" },
   { key: "supplierId", label: "Proveedor" },
 ];
 
@@ -176,7 +168,7 @@ export default function Stock() {
     stock: 0,
     unit: "",
     isActive: true,
-    family: "",
+    category: "",
     supplier: "",
     cost: 0,
   };
@@ -185,7 +177,6 @@ export default function Stock() {
     resolver: zodResolver(formSchema),
     defaultValues,
   });
-
 
   useEffect(() => {
     fetchItems().then(setItems);
@@ -261,7 +252,7 @@ export default function Stock() {
               <PlusCircle className="mr-2 h-4 w-4" /> Agregar artículo
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[720px]">
+          <DialogContent className="sm:max-w-[1000px] overflow-y-auto max-h-[90svh]">
             <DialogHeader>
               <DialogTitle>
                 {editingItem ? "Editar" : "Agregar"} artículo
@@ -370,22 +361,22 @@ export default function Stock() {
                   />
                   <FormField
                     control={form.control}
-                    name="family"
+                    name="category"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Familia</FormLabel>
+                        <FormLabel>Categoría</FormLabel>
                         <FormControl>
                           <Select
                             onValueChange={field.onChange}
                             value={field.value}
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="Selecciona una familia" />
+                              <SelectValue placeholder="Selecciona una categoría" />
                             </SelectTrigger>
                             <SelectContent>
-                              {families.map((family) => (
-                                <SelectItem key={family} value={family}>
-                                  {family}
+                              {families.map((category) => (
+                                <SelectItem key={category} value={category}>
+                                  {category}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -452,12 +443,12 @@ export default function Stock() {
         <Table>
           <TableHeader>
             <TableRow>
-                <SortableTableHeadSet
-                  sortFunction={sortItems}
-                  sortConfig={sortConfig}
-                  columns={tableHeaderColumns}
-                />
-                  
+              <SortableTableHeadSet
+                sortFunction={sortItems}
+                sortConfig={sortConfig}
+                columns={tableHeaderColumns}
+              />
+              <TableCell>Acciones</TableCell>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -468,9 +459,13 @@ export default function Stock() {
                 <TableCell>{item.stock}</TableCell>
                 <TableCell>{item.unit}</TableCell>
                 <TableCell>{item.cost.toFixed(2)}</TableCell>
-                <TableCell>{item.isActive ? "Activo" : "Inactivo"}</TableCell>
-                <TableCell>{item.family}</TableCell>
-                <TableCell>{item.supplier}</TableCell>
+                <TableCell
+                  className={item.isActive ? "text-green-600" : "text-red-600"}
+                >
+                  {item.isActive ? "Activo" : "Inactivo"}
+                </TableCell>
+                <TableCell>{item.categoryId}</TableCell>
+                <TableCell>{item.supplierId}</TableCell>
                 <TableCell>
                   <div className="flex space-x-2">
                     <Button

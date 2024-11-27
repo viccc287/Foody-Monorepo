@@ -252,7 +252,7 @@ export default function AgentPage() {
               <PlusCircle className="mr-2 h-4 w-4" /> Agregar agente
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[720px]">
+          <DialogContent className="sm:max-w-[1000px] overflow-y-auto max-h-[90svh]">
             <DialogHeader>
               <DialogTitle>
                 {editingAgent ? "Editar" : "Agregar"} agente

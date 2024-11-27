@@ -125,7 +125,7 @@ router.post("/menu-items", (req, res) => {
     });
   } catch (error) {
     console.log(error);
-    
+
     res
       .status(500)
       .json({ error: "Failed to create menu item. " + error.message });
@@ -134,66 +134,66 @@ router.post("/menu-items", (req, res) => {
 
 // Update an existing menu item
 router.put("/menu-items/:id", (req, res) => {
-    const id = req.params.id;
-    const {
-        name,
-        quantity,
-        unit,
-        isActive,
-        familyId,
-        printLocations,
-        variablePrice,
-        price,
-        ingredients
-    } = req.body;
+  const id = req.params.id;
+  const {
+    name,
+    quantity,
+    unit,
+    isActive,
+    categoryId,
+    printLocations,
+    variablePrice,
+    price,
+    ingredients,
+  } = req.body;
 
-    // Get existing menu item
-    let menuItem = MenuItem.getById(id);
-    if (!menuItem) {
-        return res.status(404).json({ error: "Menu item not found" });
-    }
+  // Get existing menu item
+  let menuItem = MenuItem.getById(id);
+  if (!menuItem) {
+    return res.status(404).json({ error: "Menu item not found" });
+  }
 
-    // Update menu item properties
-    menuItem.name = name;
-    menuItem.quantity = quantity;
-    menuItem.unit = unit;
-    menuItem.isActive = isActive;
-    menuItem.familyId = familyId;
-    menuItem.printLocations = printLocations;
-    menuItem.variablePrice = variablePrice;
-    menuItem.price = price;
+  // Update menu item properties
+  menuItem.name = name;
+  menuItem.quantity = quantity;
+  menuItem.unit = unit;
+  menuItem.isActive = isActive;
+  menuItem.categoryId = categoryId;
+  menuItem.printLocations = printLocations;
+  menuItem.variablePrice = variablePrice;
+  menuItem.price = price;
 
-    // Save updated menu item
-    menuItem.save();
+  // Save updated menu item
+  menuItem.save();
 
-    // Handle ingredients
-    // Delete existing ingredients
-    Ingredient.deleteByMenuItemId(id);
+  // Handle ingredients
+  // Delete existing ingredients
+  Ingredient.deleteByMenuItemId(id);
 
-    // Add new ingredients
-    ingredients.forEach(ing => {
-        let ingredient = new Ingredient({
-            menuItemId: id,
-            inventoryProductId: ing.inventoryProductId,
-            quantityUsed: ing.quantityUsed
-        });
-        ingredient.save();
+  // Add new ingredients
+  ingredients.forEach((ing) => {
+    let ingredient = new Ingredient({
+      menuItemId: id,
+      inventoryProductId: ing.inventoryProductId,
+      quantityUsed: ing.quantityUsed,
     });
+    ingredient.save();
+  });
 
-    // Get updated ingredients with stock info
-    const ingredientsToReturn = Ingredient.getByMenuItemId(id);
-    const ingredientsWithStockInfo = ingredientsToReturn.map((ingredient) => {
-      const stockItem = StockItem.getById(ingredient.inventoryProductId);
-      return {
-        ...ingredient,
-        stockItem,
-      };
-    });
+  // Get updated ingredients with stock info
+  const ingredientsToReturn = Ingredient.getByMenuItemId(id);
+  const ingredientsWithStockInfo = ingredientsToReturn.map((ingredient) => {
+    const stockItem = StockItem.getById(ingredient.inventoryProductId);
+    return {
+      ...ingredient,
+      stockItem,
+    };
+  });
 
-    res.json({
-      ...menuItem,
-      ingredients: ingredientsWithStockInfo,
-    });
+  res.json({
+    ...menuItem,
+    ingredients: ingredientsWithStockInfo,
+  });
 });
 
 // Delete a menu item

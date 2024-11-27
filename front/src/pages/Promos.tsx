@@ -36,7 +36,15 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { NewPromo, Promo, SortableColumn } from "@/types";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { DollarSign, Pencil, Percent, PlusCircle, Trash } from "lucide-react";
+import {
+  DollarSign,
+  Edit2,
+  Pencil,
+  Percent,
+  PlusCircle,
+  Trash,
+  Trash2,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { set, useForm } from "react-hook-form";
 import { z } from "zod";
@@ -117,11 +125,7 @@ const formSchema = z
       .min(0, "El ID de fecha recurrente no puede ser negativo")
       .optional(),
     name: z.string().trim().min(1, "El nombre es requerido"),
-    availability: z.record(z.string(), availabilitySchema).default({}), // Permitir cualquier combinación de días y horarios
-  })
-  .refine((data) => data.buy_quantity > data.pay_quantity, {
-    message: "La cantidad de compra debe ser menor que la cantidad de pago",
-    path: ["pay_quantity"], // Indica el campo que causa el error
+    availability: z.record(z.string(), availabilitySchema), // Permitir cualquier combinación de días y horarios
   })
   .refine(
     (data) => {
@@ -146,10 +150,35 @@ const formSchema = z
   .refine(
     (data) =>
       Object.values(data.availability).some(
-        (day) => day.startTime || day.endTime
+        (day) => day.startTime && day.endTime
       ),
     {
       message: "Al menos un día debe tener un horario definido.",
+      path: ["availability"],
+    }
+  )
+  .refine(
+    (data) =>
+      data.type !== "buy_x_get_y" ||
+      (data.buy_quantity !== undefined &&
+        data.pay_quantity !== undefined &&
+        data.buy_quantity > data.pay_quantity),
+    {
+      message: "La cantidad que se paga debe ser menor que la que se lleva",
+      path: ["pay_quantity"],
+    }
+  )
+  .refine((data) => data.startDate <= data.endDate, {
+    message: "La fecha de término no puede ser anterior a la fecha de inicio",
+    path: ["endDate"],
+  })
+  .refine(
+    (data) =>
+      Object.values(data.availability).every(
+        (day) => !day.startTime || !day.endTime || day.startTime < day.endTime
+      ),
+    {
+      message: "La hora de término no puede ser anterior a la hora de inicio",
       path: ["availability"],
     }
   );
@@ -236,19 +265,55 @@ const savePromo = async (promo: Promo): Promise<Promo> => {
 // };
 
 const tableHeaderColumns: SortableColumn<Promo>[] = [
-  { key: "menuItemId", label: "Artículo" },
   { key: "name", label: "Nombre" },
+  { key: "menuItemId", label: "Artículo" },
   { key: "startDate", label: "Fecha de inicio" },
   { key: "endDate", label: "Fecha de fin" },
   { key: "type", label: "Tipo" },
   { key: "discount", label: "Descuento" },
-  { key: "buy_quantity", label: "Compra" },
+  { key: "buy_quantity", label: "Lleva" },
   { key: "pay_quantity", label: "Paga" },
   { key: "percentage", label: "Porcentaje" },
   { key: "always", label: "¿Siempre activo?" },
   { key: "isActive", label: "Estado" },
   { key: "availability", label: "Días" },
 ];
+
+const daysInSpanish = [
+  "Lunes",
+  "Martes",
+  "Miércoles",
+  "Jueves",
+  "Viernes",
+  "Sábado",
+  "Domingo",
+];
+
+const daysInEnglish = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
+
+const typesInSpanish = {
+  price_discount: "Descuento por precio",
+  percentage_discount: "Descuento por porcentaje",
+  buy_x_get_y: "Paga X lleva Y",
+};
+
+const daysTranslations = {
+  Monday: "Lunes",
+  Tuesday: "Martes",
+  Wednesday: "Miércoles",
+  Thursday: "Jueves",
+  Friday: "Viernes",
+  Saturday: "Sábado",
+  Sunday: "Domingo",
+};
 
 export default function Promos() {
   const [promos, setPromos] = useState<Promo[]>([]);
@@ -257,26 +322,6 @@ export default function Promos() {
   const [selectedType, setSelectedType] = useState("");
   const { toast } = useToast();
   const { sortConfig, sortItems: sortPromos } = useSortConfig<Promo>(setPromos);
-
-  const daysInSpanish = [
-    "Lunes",
-    "Martes",
-    "Miércoles",
-    "Jueves",
-    "Viernes",
-    "Sábado",
-    "Domingo",
-  ];
-
-  const daysInEnglish = [
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-    "Sunday",
-  ];
 
   const alert = (title: string, description: string, status?: string) =>
     toast({
@@ -399,7 +444,7 @@ export default function Promos() {
             </Button>
           </DialogTrigger>
 
-          <DialogContent className="sm:max-w-[1000px] max-h-[95vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[1000px] max-h-[90svh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingPromo ? "Editar" : "Agregar"} promoción
@@ -536,6 +581,7 @@ export default function Promos() {
                       </FormItem>
                     )}
                   />
+
                   {selectedType === "price_discount" && (
                     <FormField
                       control={form.control}
@@ -544,7 +590,7 @@ export default function Promos() {
                         <FormItem className="col-span-2 w-fit">
                           <FormLabel>Descuento</FormLabel>
                           <FormControl>
-                            <div className=" flex items-center">
+                            <div className=" flex items-center gap-1">
                               <DollarSign size={16} />
                               <Input
                                 type="number"
@@ -576,7 +622,7 @@ export default function Promos() {
                         <FormItem className="col-span-2 w-fit">
                           <FormLabel>Porcentaje</FormLabel>
                           <FormControl>
-                            <div className="flex items-center">
+                            <div className="flex items-center gap-1">
                               <Input
                                 type="number"
                                 placeholder="Porcentaje"
@@ -603,16 +649,16 @@ export default function Promos() {
                     <div className="flex gap-12 col-span-2">
                       <FormField
                         control={form.control}
-                        name="pay_quantity"
+                        name="buy_quantity"
                         render={({ field }) => (
                           <FormItem className="w-fit">
-                            <FormLabel>Paga</FormLabel>
+                            <FormLabel>Lleva</FormLabel>
                             <FormControl>
                               <div className=" flex items-center">
                                 <Input
                                   type="number"
                                   step="1.0"
-                                  placeholder="X"
+                                  placeholder="Y"
                                   {...field}
                                   value={field.value ?? ""}
                                   onChange={(e) =>
@@ -634,16 +680,16 @@ export default function Promos() {
                       />
                       <FormField
                         control={form.control}
-                        name="buy_quantity"
+                        name="pay_quantity"
                         render={({ field }) => (
                           <FormItem className="w-fit">
-                            <FormLabel>Lleva</FormLabel>
+                            <FormLabel>Paga</FormLabel>
                             <FormControl>
                               <div className=" flex items-center">
                                 <Input
                                   type="number"
                                   step="1.0"
-                                  placeholder="Y"
+                                  placeholder="X"
                                   {...field}
                                   value={field.value ?? ""}
                                   onChange={(e) =>
@@ -688,6 +734,7 @@ export default function Promos() {
                                 onChange={(e) => field.onChange(e.target.value)} // Aseguramos que el valor se actualice correctamente
                               />
                             </FormControl>
+                            <FormMessage />
                           </FormItem>
                         )}
                       />
@@ -708,57 +755,64 @@ export default function Promos() {
                                 onChange={(e) => field.onChange(e.target.value)} // Aseguramos que el valor se actualice correctamente
                               />
                             </FormControl>
+                            <FormMessage />
                           </FormItem>
                         )}
                       />
                     </div>
                   ))}
 
-                  <div className="invisible"></div>
+                  {form.formState.errors.availability && (
+                    <FormMessage>
+                      {form.formState.errors.availability?.root?.message}
+                    </FormMessage>
+                  )}
 
-                  <FormField
-                    control={form.control}
-                    name="always"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                        <FormControl>
-                          <Checkbox
-                            name="always"
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel>Siempre</FormLabel>
-                          <FormDescription>
-                            ¿Esta promoción estará activa siempre?
-                          </FormDescription>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
+                  <div className="flex gap-2 col-span-2">
+                    <FormField
+                      control={form.control}
+                      name="always"
+                      render={({ field }) => (
+                        <FormItem className="flex w-1/2 flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                          <FormControl>
+                            <Checkbox
+                              name="always"
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>Siempre</FormLabel>
+                            <FormDescription>
+                              ¿Esta promoción estará activa siempre?
+                            </FormDescription>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
 
-                  <FormField
-                    control={form.control}
-                    name="isActive"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                        <FormControl>
-                          <Checkbox
-                            name="isActive"
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel>Activo</FormLabel>
-                          <FormDescription>
-                            ¿Esta promoción está activa?
-                          </FormDescription>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
+                    <FormField
+                      control={form.control}
+                      name="isActive"
+                      render={({ field }) => (
+                        <FormItem className="w-1/2 flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                          <FormControl>
+                            <Checkbox
+                              name="isActive"
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>Activo</FormLabel>
+                            <FormDescription>
+                              ¿Esta promoción está activa?
+                            </FormDescription>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
                 <Button type="submit" className="self-end" size="lg">
                   Guardar
@@ -779,53 +833,94 @@ export default function Promos() {
                 sortConfig={sortConfig}
                 sortFunction={sortPromos}
               />
+              <TableHead>Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {promos.map((promo) => (
               <TableRow key={promo.id}>
-                <TableCell>{promo.menuItemId}</TableCell>
                 <TableCell>{promo.name}</TableCell>
+                <TableCell>{promo.menuItemId}</TableCell>
                 <TableCell>
                   {new Date(promo.startDate).toLocaleDateString()}
                 </TableCell>
                 <TableCell>
                   {new Date(promo.endDate).toLocaleDateString()}
                 </TableCell>
-                <TableCell>{promo.type}</TableCell>
-                <TableCell>{promo.discount}</TableCell>
-                <TableCell>{promo.buy_quantity}</TableCell>
-                <TableCell>{promo.pay_quantity}</TableCell>
-                <TableCell>{promo.percentage}</TableCell>
-                <TableCell>{promo.always ? "Si" : "No"}</TableCell>
-                <TableCell>{promo.isActive ? "Activo" : "Inactivo"}</TableCell>
                 <TableCell>
-                  {Object.entries(promo.availability)
-                    .filter(
-                      ([day, { startTime, endTime }]) =>
-                        startTime !== null && endTime !== null
-                    )
-                    .map(([day, { startTime, endTime }]) => (
-                      <div key={day}>
-                        {day}: {startTime} - {endTime}
-                      </div>
-                    ))}
+                  {typesInSpanish[promo.type as keyof typeof typesInSpanish]}
+                </TableCell>
+                <TableCell
+                  className={
+                    promo.type === "price_discount" ? "text-green-600" : ""
+                  }
+                >
+                  {promo.type === "price_discount" && `$${promo.discount}`}
+                </TableCell>
+                <TableCell
+                  className={
+                    promo.type === "buy_x_get_y" ? "text-green-600" : ""
+                  }
+                >
+                  {promo.type === "buy_x_get_y" && promo.buy_quantity}
+                </TableCell>
+                <TableCell
+                  className={
+                    promo.type === "buy_x_get_y" ? "text-green-600" : ""
+                  }
+                >
+                  {promo.type === "buy_x_get_y" && promo.pay_quantity}
+                </TableCell>
+                <TableCell
+                  className={
+                    promo.type === "percentage_discount" ? "text-green-600" : ""
+                  }
+                >
+                  {promo.type === "percentage_discount" &&
+                    `${promo.percentage}%`}
+                </TableCell>
+                <TableCell>{promo.always ? "Si" : "No"}</TableCell>
+                <TableCell
+                  className={promo.isActive ? "text-green-600" : "text-red-600"}
+                >
+                  {promo.isActive ? "Activa" : "Inactiva"}
                 </TableCell>
                 <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleEdit(promo)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(promo.id)}
-                  >
-                    <Trash className="h-4 w-4" />
-                  </Button>
+                  <ul>
+                    {Object.entries(promo.availability)
+                      .filter(
+                        ([, { startTime, endTime }]) =>
+                          startTime !== null && endTime !== null
+                      )
+                      .map(([day, { startTime, endTime }]) => (
+                        <li key={day}>
+                          {
+                            daysTranslations[
+                              day as keyof typeof daysTranslations
+                            ]
+                          }
+                          : {startTime} - {endTime}
+                        </li>
+                      ))}
+                  </ul>
+                </TableCell>
+                <TableCell>
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleEdit(promo)}
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      onClick={() => handleDelete(promo.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

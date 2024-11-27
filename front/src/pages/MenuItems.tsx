@@ -58,7 +58,7 @@ type StockItem = {
   stock: number;
   unit: string;
   isActive: boolean;
-  familyId: number;
+  categoryId: number;
   supplierId: number;
   cost: number;
 };
@@ -84,7 +84,7 @@ type MenuItem = {
   quantity: number;
   unit: string;
   isActive: boolean;
-  familyId: number;
+  categoryId: number;
   printLocations: string[];
   variablePrice: boolean;
   price: number;
@@ -102,7 +102,7 @@ const formSchema = z.object({
     .min(1, "La cantidad debe ser mayor a 0"),
   unit: z.string().trim().min(1, "Unidad requerida"),
   isActive: z.boolean(),
-  familyId: z.number(),
+  categoryId: z.number(),
   printLocations: z.array(z.string()),
   variablePrice: z.boolean(),
   price: z
@@ -111,7 +111,9 @@ const formSchema = z.object({
     .multipleOf(0.01, "El precio debe ser múltiplo de 0.01"),
   ingredients: z.array(
     z.object({
-      inventoryProductId: z.number({invalid_type_error: 'Invalid'}).min(1, "Ingrediente requerido"),
+      inventoryProductId: z
+        .number({ invalid_type_error: "Invalid" })
+        .min(1, "Ingrediente requerido"),
       quantityUsed: z.number().min(0.01, "La cantidad debe ser mayor a 0.01"),
     })
   ),
@@ -182,15 +184,6 @@ const deleteItem = async (id: number): Promise<void> => {
   });
   if (!response.ok) throw new Error("Error al eliminar el artículo");
 };
-const validateForm = (data) => {
-  try {
-    formSchema.parse(data);
-  } catch (err) {
-    if (err instanceof z.ZodError) {
-      console.log(err.errors);
-    }
-  }
-};
 
 const tableHeaderColumns: SortableColumn<MenuItem>[] = [
   { key: "id", label: "ID" },
@@ -198,7 +191,7 @@ const tableHeaderColumns: SortableColumn<MenuItem>[] = [
   { key: "quantity", label: "Cantidad" },
   { key: "unit", label: "Unidad" },
   { key: "price", label: "Precio" },
-  { key: "familyId", label: "Familia" },
+  { key: "categoryId", label: "Categoría" },
   { key: "printLocations", label: "Imprimir en" },
   { key: "variablePrice", label: "Precio variable" },
   { key: "isActive", label: "Estado" },
@@ -228,7 +221,7 @@ export default function MenuItems() {
     quantity: 1,
     unit: "",
     isActive: true,
-    familyId: -2,
+    categoryId: -2,
     printLocations: [],
     variablePrice: false,
     price: 0,
@@ -333,13 +326,7 @@ export default function MenuItems() {
             <Form {...form}>
               <form
                 name="articleForm"
-                onSubmit={(event) => {
-                  event?.preventDefault();
-                  console.log(form.getValues());
-                  validateForm(form.getValues());
-                  
-                  form.handleSubmit(onSubmit)();
-                }}
+                onSubmit={form.handleSubmit(onSubmit)}
                 className="flex flex-col gap-4"
               >
                 <div className="gap-4 grid grid-cols-2 ">
@@ -432,21 +419,21 @@ export default function MenuItems() {
                   />
                   <FormField
                     control={form.control}
-                    name="familyId"
+                    name="categoryId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Familia</FormLabel>
+                        <FormLabel>Categoría</FormLabel>
                         <Select
                           onValueChange={(value) => {
                             field.onChange(parseInt(value));
                             console.log(value);
                           }}
                           defaultValue={field.value.toString()}
-                          name="familyId"
+                          name="categoryId"
                         >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Selecciona una familia" />
+                              <SelectValue placeholder="Selecciona una categoría" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -676,7 +663,11 @@ export default function MenuItems() {
                 <TableCell>{item.quantity}</TableCell>
                 <TableCell>{item.unit}</TableCell>
                 <TableCell>{item.price.toFixed(2)}</TableCell>
-                <TableCell>{item.familyId}</TableCell>
+                <TableCell>
+                  {categories.find(
+                    (category) => category.id === item.categoryId
+                  )?.name || "Categoría inexistente"}
+                </TableCell>
                 <TableCell>
                   {item.printLocations.length > 0
                     ? item.printLocations.join(", ")

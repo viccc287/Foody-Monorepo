@@ -221,7 +221,7 @@ export default function Categories() {
               <PlusCircle className="mr-2 h-4 w-4" /> Agregar categoría
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="sm:max-w-[1000px] overflow-y-auto max-h-[90svh]">
             <DialogHeader>
               <DialogTitle>
                 {editingCategory ? "Editar" : "Agregar"} categoría

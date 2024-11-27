@@ -24,17 +24,16 @@ router.post("/", (req, res) => {
     quantity,
     unit,
     isActive,
-    family,
+    category,
     supplier,
     printLocations,
     variablePrice,
     recipe,
     price,
   } = req.body;
-  
 
   const stmt = db.prepare(
-    `INSERT INTO Item (name, quantity, unit, isActive, family, supplier, printLocations, variablePrice, recipe, price)
+    `INSERT INTO Item (name, quantity, unit, isActive, category, supplier, printLocations, variablePrice, recipe, price)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
 
@@ -43,16 +42,16 @@ router.post("/", (req, res) => {
     quantity,
     unit,
     isActive ? 1 : 0,
-    family,
+    category,
     supplier,
     JSON.stringify(printLocations),
     variablePrice ? 1 : 0,
     recipe,
     price
-  )
+  );
 
   res.json({ id: result.lastInsertRowid });
-  console.log(`Item ADDED by USER at ${new Date().toLocaleString('es-MX')}`);
+  console.log(`Item ADDED by USER at ${new Date().toLocaleString("es-MX")}`);
 });
 
 router.put("/:id", (req, res) => {
@@ -62,7 +61,7 @@ router.put("/:id", (req, res) => {
     quantity,
     unit,
     isActive,
-    family,
+    category,
     supplier,
     printLocations,
     variablePrice,
@@ -72,7 +71,7 @@ router.put("/:id", (req, res) => {
 
   const stmt = db.prepare(
     `UPDATE Item
-     SET name = ?, quantity = ?, unit = ?, isActive = ?, family = ?, supplier = ?, printLocations = ?, variablePrice = ?, recipe = ?, price = ?
+     SET name = ?, quantity = ?, unit = ?, isActive = ?, category = ?, supplier = ?, printLocations = ?, variablePrice = ?, recipe = ?, price = ?
      WHERE id = ?`
   );
 
@@ -81,7 +80,7 @@ router.put("/:id", (req, res) => {
     quantity,
     unit,
     isActive ? 1 : 0,
-    family,
+    category,
     supplier,
     JSON.stringify(printLocations),
     variablePrice ? 1 : 0,
@@ -92,8 +91,9 @@ router.put("/:id", (req, res) => {
 
   if (result.changes > 0) {
     res.json({ message: "Item updated successfully" });
-    console.log(`Item UPDATED by USER at ${new Date().toLocaleString('es-MX')}`);
-
+    console.log(
+      `Item UPDATED by USER at ${new Date().toLocaleString("es-MX")}`
+    );
   } else {
     res.status(404).json({ error: "Item not found" });
   }
@@ -107,8 +107,9 @@ router.delete("/:id", (req, res) => {
 
   if (result.changes > 0) {
     res.json({ message: "Item deleted successfully" });
-    console.log(`Item DELETED by USER at ${new Date().toLocaleString('es-MX')}`);
-
+    console.log(
+      `Item DELETED by USER at ${new Date().toLocaleString("es-MX")}`
+    );
   } else {
     res.status(404).json({ error: "Item not found" });
   }
