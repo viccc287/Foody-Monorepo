@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import {BrowserRouter as Router, Routes, Route, useLocation} from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Toaster } from "@/components/ui/toaster";
@@ -8,33 +8,50 @@ import Stock from "@/pages/Stock";
 import Categories from "@/pages/Categories";
 import Suppliers from "@/pages/Suppliers";
 import Promos from "@/pages/Promos";
+import LoginForm from "@/pages/Login.tsx";
+import Login from "@/pages/Login.tsx";
+import PrivateRoute from "@/components/PrivateRoute.tsx";
 
-export default function Layout() {
+function AppLayout() {
+  const location = useLocation();
+  const isLoginRoute = location.pathname === "/login";
+
   return (
-    <SidebarProvider>
-      <Router>
+      <SidebarProvider>
         <Toaster />
-        <AppSidebar />
+        {!isLoginRoute && <AppSidebar />}
         <main className="w-full p-4 overflow-auto">
-          <SidebarTrigger />
+          {!isLoginRoute && <SidebarTrigger />}
           <Routes>
             <Route
-              path="/"
-              element={
-                <div>
-                  <h1>HOME</h1>
-                </div>
-              }
+                path="/"
+                element={
+                  <div>
+                    <h1>HOME</h1>
+                  </div>
+                }
             />
             <Route path="/menu-items" element={<MenuItems />} />
-            <Route path="/agents" element={<Agents />} />
+              <Route path="/agents" element={
+                  <PrivateRoute allowedRoles={['manager']}>
+                      <Agents />
+                  </PrivateRoute>}
+              />
             <Route path="/stock" element={<Stock />} />
             <Route path="/categories" element={<Categories />} />
             <Route path="/suppliers" element={<Suppliers />} />
-            <Route path="/promos" element={<Promos/>} />
+            <Route path="/promos" element={<Promos />} />
+            <Route path="/login" element={<Login />} />
           </Routes>
         </main>
+      </SidebarProvider>
+  );
+}
+
+export default function Layout() {
+  return (
+      <Router>
+        <AppLayout />
       </Router>
-    </SidebarProvider>
   );
 }

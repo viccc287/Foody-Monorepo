@@ -1,10 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button.tsx"
+import { Input } from "@/components/ui/input.tsx"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card.tsx"
 import tokenService from "@/services/tokenService.ts";
 import {useNavigate} from "react-router-dom";
 
@@ -31,18 +30,21 @@ export default function LoginForm() {
     }
 
     const handlePasswordSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
+        e.preventDefault();
         if (password.length >= 4) {
-            let response = await login(email, password);
-            if (response.token) {
-                tokenService.setToken(response.token);
-                navigate('/agents');
-            } else {
-                setError('Invalid credentials')
+            try {
+                let response = await login(email, password);
+                if (response.token) {
+                    tokenService.setToken(response.token);
+                    navigate('/agents');
+                } else {
+                    setError('Invalid credentials');
+                }
+            } catch (error) {
+                setError(error.message);
             }
-            setError('')
         } else {
-            setError('Password must be at least 4 characters long')
+            setError('Password must be at least 4 characters long');
         }
     }
 
