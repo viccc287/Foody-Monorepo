@@ -3,14 +3,13 @@ import db from "../../database/connection";
 class MenuItem {
     static tableName = "MenuItem";
 
-    constructor({ id, name, quantity, unit, isActive, family, supplier, printLocations, variablePrice, price }) {
+    constructor({ id, name, quantity, unit, isActive, familyId, printLocations, variablePrice, price }) {
         this.id = id || null;
         this.name = name;
         this.quantity = quantity;
         this.unit = unit;
         this.isActive = !!isActive;
-        this.family = family;
-        this.supplier = supplier;
+        this.familyId = familyId;
         this.printLocations = Array.isArray(printLocations) ? printLocations : JSON.parse(printLocations || "[]");
         this.variablePrice = variablePrice || false;
         this.price = price;
@@ -39,16 +38,15 @@ class MenuItem {
 
     #createRecord() {
         const stmt = db.prepare(
-            `INSERT INTO ${MenuItem.tableName} (name, quantity, unit, isActive, family, supplier, printLocations, variablePrice, price)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            `INSERT INTO ${MenuItem.tableName} (name, quantity, unit, isActive, familyId, printLocations, variablePrice, price)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
         );
         const result = stmt.run(
             this.name,
             this.quantity,
             this.unit,
             this.isActive ? 1 : 0,
-            this.family,
-            this.supplier,
+            this.familyId,
             JSON.stringify(this.printLocations),
             this.variablePrice ? 1 : 0,
             this.price
@@ -60,7 +58,7 @@ class MenuItem {
     #updateRecord() {
         const stmt = db.prepare(
             `UPDATE ${MenuItem.tableName}
-            SET name = ?, quantity = ?, unit = ?, isActive = ?, family = ?, supplier = ?, printLocations = ?, variablePrice = ?, price = ?
+            SET name = ?, quantity = ?, unit = ?, isActive = ?, familyId = ?, printLocations = ?, variablePrice = ?, price = ?
             WHERE id = ?`
         );
         const result = stmt.run(
@@ -68,8 +66,7 @@ class MenuItem {
             this.quantity,
             this.unit,
             this.isActive ? 1 : 0,
-            this.family,
-            this.supplier,
+            this.familyId,
             JSON.stringify(this.printLocations),
             this.variablePrice ? 1 : 0,
             this.price,

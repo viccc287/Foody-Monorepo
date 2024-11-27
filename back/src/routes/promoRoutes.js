@@ -23,6 +23,10 @@ router.post("/promos-with-availability", (req, res) => {
     try {
         const { availability, ...promoData } = req.body;
 
+        if (!['price_discount', 'percentage_discount', 'buy_x_get_y'].includes(promoData.type)) {
+            return res.status(400).json({ error: "Invalid promo type. Must be 'discount' or 'buy_x_get_y'." });
+        }
+
         // Ensure dates are properly formatted
         promoData.startDate = promoData.startDate ? new Date(promoData.startDate).toISOString() : null;
         promoData.endDate = promoData.endDate ? new Date(promoData.endDate).toISOString() : null;
@@ -30,13 +34,13 @@ router.post("/promos-with-availability", (req, res) => {
         // Replace undefined values with null for optional fields
         promoData.buy_quantity = promoData.buy_quantity ?? null;
         promoData.pay_quantity = promoData.pay_quantity ?? null;
-        promoData.discount = promoData.discount ?? null;
-        promoData.percentage = promoData.percentage ?? null;
+        promoData.price_discount = promoData.discount ?? null;
+        promoData.percentage_discount = promoData.percentage ?? null;
 
         // Step 1: Create the Promo
         const promo = new Promo(promoData);
         promo.save();
-        const promoId = promo.id;
+        const id = promo.id;
 
         // Step 2: Process Availability (Recurrent Dates)
         if (availability) {
@@ -45,7 +49,7 @@ router.post("/promos-with-availability", (req, res) => {
             recurrentDays.forEach(([day, times]) => {
                 if (times && times.startTime && times.endTime) {
                     const recurrentDate = new RecurrentDate({
-                        promoId,
+                        promoId: id,
                         days_of_week: day.charAt(0).toUpperCase() + day.slice(1), // Capitalize day
                         startTime: times.startTime,
                         endTime: times.endTime,
@@ -55,10 +59,99 @@ router.post("/promos-with-availability", (req, res) => {
             });
         }
 
-        res.status(201).json({ promoId, message: "Promo and availability created successfully." });
+        res.status(201).json({ id, message: "Promo and availability created successfully." });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: `Failed to create promo and availability. ${error.message}` });
+    }
+});
+
+// Update an existing promotion with availability days and times
+router.put("/promos-with-availability/:id", async (req, res) => {
+    try {
+        const promoId = req.params.id;
+        const { availability, ...promoData } = req.body;
+
+        // Fetch the existing promo
+        const promo = Promo.getById(promoId);
+        if (!promo) {
+            return res.status(404).json({ error: "Promo not found." });
+        }
+
+        // Update promo fields
+        Object.assign(promo, promoData);
+
+        // Save the updated promo
+        promo.save();
+
+        // Update availability (Recurrent Dates)
+        if (availability) {
+            // Delete existing recurrence rules
+            const existingRules = promo.getRecurrenceRules();
+            existingRules.forEach((rule) => rule.delete());
+
+            // Add new recurrence rules
+            Object.entries(availability).forEach(([day, times]) => {
+                if (times && times.startTime && times.endTime) {
+                    const recurrentDate = new RecurrentDate({
+                        promoId: promo.id,
+                        days_of_week: day.charAt(0).toUpperCase() + day.slice(1), // Capitalize day
+                        startTime: times.startTime,
+                        endTime: times.endTime,
+                    });
+                    recurrentDate.save();
+                }
+            });
+        }
+
+        res.status(200).json({ id: promo.id, message: "Promo and availability updated successfully." });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: `Failed to update promo and availability. ${error.message}` });
+    }
+});
+
+
+
+// Get all promotions with recurrence information
+router.get("/promos-with-availability", (req, res) => {
+    try {
+        // Fetch all promos
+        const promos = Promo.getAll();
+
+        // Fetch recurrence rules for each promo
+        const promosWithAvailability = promos.map((promo) => {
+            const recurrenceRules = RecurrentDate.getByPromoId(promo.id);
+
+            // Initialize availability with all days set to null
+            const availability = {
+                Monday: { startTime: null, endTime: null },
+                Tuesday: { startTime: null, endTime: null },
+                Wednesday: { startTime: null, endTime: null },
+                Thursday: { startTime: null, endTime: null },
+                Friday: { startTime: null, endTime: null },
+                Saturday: { startTime: null, endTime: null },
+                Sunday: { startTime: null, endTime: null },
+            };
+
+            // Populate availability with actual times
+            recurrenceRules.forEach((rule) => {
+                availability[rule.days_of_week] = {
+                    startTime: rule.startTime,
+                    endTime: rule.endTime,
+                };
+            });
+
+            return {
+                ...promo,
+                availability,
+            };
+        });
+
+        res.json(promosWithAvailability);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Failed to fetch promotions with availability." });
     }
 });
 

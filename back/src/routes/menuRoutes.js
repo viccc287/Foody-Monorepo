@@ -124,6 +124,8 @@ router.post("/menu-items", (req, res) => {
       ingredients: ingredientsWithStockInfo,
     });
   } catch (error) {
+    console.log(error);
+    
     res
       .status(500)
       .json({ error: "Failed to create menu item. " + error.message });
@@ -138,8 +140,7 @@ router.put("/menu-items/:id", (req, res) => {
         quantity,
         unit,
         isActive,
-        family,
-        supplier,
+        familyId,
         printLocations,
         variablePrice,
         price,
@@ -157,8 +158,7 @@ router.put("/menu-items/:id", (req, res) => {
     menuItem.quantity = quantity;
     menuItem.unit = unit;
     menuItem.isActive = isActive;
-    menuItem.family = family;
-    menuItem.supplier = supplier;
+    menuItem.familyId = familyId;
     menuItem.printLocations = printLocations;
     menuItem.variablePrice = variablePrice;
     menuItem.price = price;

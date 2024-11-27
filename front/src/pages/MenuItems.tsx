@@ -1,5 +1,12 @@
 import { useState, useEffect } from "react";
-import { PlusCircle, Pencil, Trash, DollarSign } from "lucide-react";
+import {
+  PlusCircle,
+  Pencil,
+  Trash,
+  DollarSign,
+  Edit2,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -41,14 +48,18 @@ import * as z from "zod";
 
 import { useToast } from "@/hooks/use-toast";
 
+import type { SortableColumn } from "@/types";
+import useSortConfig from "@/lib/useSortConfig";
+import SortableTableHeadSet from "@/components/SortableTableHeadSet";
+
 type StockItem = {
   id: number;
   name: string;
   stock: number;
   unit: string;
   isActive: boolean;
-  family: string;
-  supplier: string;
+  familyId: number;
+  supplierId: number;
   cost: number;
 };
 
@@ -60,14 +71,20 @@ type Ingredient = {
   stockItem: StockItem;
 };
 
+type Category = {
+  id: number;
+  name: string;
+  description: string;
+  type: string;
+};
+
 type MenuItem = {
   id: number;
   name: string;
   quantity: number;
   unit: string;
   isActive: boolean;
-  family: string;
-  supplier: string;
+  familyId: number;
   printLocations: string[];
   variablePrice: boolean;
   price: number;
@@ -75,43 +92,6 @@ type MenuItem = {
 };
 
 const printLocations = ["Cocina", "Caja", "Barra"];
-
-const families = [
-  "Alimentos",
-  "Cervezas",
-  "Cocteles",
-  "Mezcal/Tequila",
-  "Whiskies",
-  "Vinos",
-  "Ron",
-  "Vodka",
-  "Ginebra",
-  "Brandy",
-  "Cognac",
-  "Otros",
-];
-
-const suppliers = [
-  "Tecate",
-  "Corona",
-  "Modelo",
-  "Heineken",
-  "Victoria",
-  "Indio",
-  "Pacífico",
-  "Bohemia",
-  "Budweiser",
-  "Stella Artois",
-  "León",
-  "Sol",
-  "XX Lager",
-  "XX Ambar",
-  "Negra Modelo",
-  "Montejo",
-  "Superior",
-  "Barrilito",
-  "Proveedor Genérico",
-];
 
 const units = ["pieza", "vaso", "botella", "kg", "g", "l", "ml"];
 
@@ -122,8 +102,7 @@ const formSchema = z.object({
     .min(1, "La cantidad debe ser mayor a 0"),
   unit: z.string().trim().min(1, "Unidad requerida"),
   isActive: z.boolean(),
-  family: z.string().trim().min(1, "Familia requerida"),
-  supplier: z.string().trim().min(1, "Proveedor requerido"),
+  familyId: z.number(),
   printLocations: z.array(z.string()),
   variablePrice: z.boolean(),
   price: z
@@ -132,39 +111,46 @@ const formSchema = z.object({
     .multipleOf(0.01, "El precio debe ser múltiplo de 0.01"),
   ingredients: z.array(
     z.object({
-      inventoryProductId: z.number().min(1, "Ingrediente requerido"),
-      quantityUsed: z.number().min(0, "La cantidad debe ser mayor a 0"),
+      inventoryProductId: z.number({invalid_type_error: 'Invalid'}).min(1, "Ingrediente requerido"),
+      quantityUsed: z.number().min(0.01, "La cantidad debe ser mayor a 0.01"),
     })
   ),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
-const FETCH_BASE_URL = "http://localhost:3000/menu";
+const BASE_FETCH_URL = "http://localhost:3000/menu";
+const CATEGORY_FETCH_URL = "http://localhost:3000/categories?type=menu";
 
 const fetchItems = async (): Promise<MenuItem[]> => {
-  const response = await fetch(`${FETCH_BASE_URL}/menu-items-with-ingredients`);
+  const response = await fetch(`${BASE_FETCH_URL}/menu-items-with-ingredients`);
   const data: MenuItem[] = await response.json();
 
   return data;
 };
 
 const fetchStockItems = async (): Promise<StockItem[]> => {
-  const response = await fetch(`${FETCH_BASE_URL}/stock-items`);
+  const response = await fetch(`${BASE_FETCH_URL}/stock-items`);
   const data: StockItem[] = await response.json();
 
   return data;
 };
 
+const fetchCategories = async (): Promise<Category[]> => {
+  const response = await fetch(CATEGORY_FETCH_URL);
+  const data: Category[] = await response.json();
+
+  return data;
+};
+
 const saveItem = async (item: MenuItem): Promise<MenuItem> => {
-  const response = await fetch(`${FETCH_BASE_URL}/menu-items/${item.id}`, {
+  const response = await fetch(`${BASE_FETCH_URL}/menu-items/${item.id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify(item),
   });
-
 
   if (!response.ok) throw new Error("Error al guardar el artículo");
 
@@ -174,13 +160,15 @@ const saveItem = async (item: MenuItem): Promise<MenuItem> => {
 };
 
 const createItem = async (values: FormValues): Promise<MenuItem> => {
-  const response = await fetch(`${FETCH_BASE_URL}/menu-items`, {
+  const response = await fetch(`${BASE_FETCH_URL}/menu-items`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify(values),
   });
+
+  console.log("VALUES SENT ON CREATE: ", values);
 
   if (!response.ok) throw new Error("Error al crear el artículo");
   const data = await response.json();
@@ -189,17 +177,43 @@ const createItem = async (values: FormValues): Promise<MenuItem> => {
 };
 
 const deleteItem = async (id: number): Promise<void> => {
-  const response = await fetch(`${FETCH_BASE_URL}/menu-items/${id}`, {
+  const response = await fetch(`${BASE_FETCH_URL}/menu-items/${id}`, {
     method: "DELETE",
   });
   if (!response.ok) throw new Error("Error al eliminar el artículo");
 };
+const validateForm = (data) => {
+  try {
+    formSchema.parse(data);
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      console.log(err.errors);
+    }
+  }
+};
+
+const tableHeaderColumns: SortableColumn<MenuItem>[] = [
+  { key: "id", label: "ID" },
+  { key: "name", label: "Nombre" },
+  { key: "quantity", label: "Cantidad" },
+  { key: "unit", label: "Unidad" },
+  { key: "price", label: "Precio" },
+  { key: "familyId", label: "Familia" },
+  { key: "printLocations", label: "Imprimir en" },
+  { key: "variablePrice", label: "Precio variable" },
+  { key: "isActive", label: "Estado" },
+  { key: "ingredients", label: "Ingredientes" },
+];
 
 export default function MenuItems() {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
+
+  const { sortConfig, sortItems } = useSortConfig<MenuItem>(setItems);
+
   const { toast } = useToast();
 
   const alert = (title: string, description: string, status?: string) =>
@@ -214,8 +228,7 @@ export default function MenuItems() {
     quantity: 1,
     unit: "",
     isActive: true,
-    family: "",
-    supplier: "",
+    familyId: -2,
     printLocations: [],
     variablePrice: false,
     price: 0,
@@ -229,7 +242,10 @@ export default function MenuItems() {
 
   useEffect(() => {
     fetchItems().then(setItems);
+    console.log("ITEMS: ", items);
+
     fetchStockItems().then(setStockItems);
+    fetchCategories().then(setCategories);
   }, []);
 
   const onSubmit = async (values: FormValues) => {
@@ -303,24 +319,30 @@ export default function MenuItems() {
               <PlusCircle className="mr-2 h-4 w-4" /> Agregar artículo
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[1000px]">
+          <DialogContent className="sm:max-w-[1000px] overflow-y-auto max-h-[90svh]">
             <DialogHeader>
               <DialogTitle>
                 {editingItem ? "Editar" : "Agregar"} artículo
               </DialogTitle>
               <DialogDescription>
                 {editingItem
-                  ? "Edita los detalles del artículo"
-                  : "Agrega un nuevo artículo"}
+                  ? "Edita los detalles del artículo del menú"
+                  : "Agrega un nuevo artículo al menú"}
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
               <form
                 name="articleForm"
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="flex flex-col space-y-4"
+                onSubmit={(event) => {
+                  event?.preventDefault();
+                  console.log(form.getValues());
+                  validateForm(form.getValues());
+                  
+                  form.handleSubmit(onSubmit)();
+                }}
+                className="flex flex-col gap-4"
               >
-                <div className="gap-4 grid grid-cols-2">
+                <div className="gap-4 grid grid-cols-2 ">
                   <FormField
                     control={form.control}
                     name="name"
@@ -410,14 +432,17 @@ export default function MenuItems() {
                   />
                   <FormField
                     control={form.control}
-                    name="family"
+                    name="familyId"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Familia</FormLabel>
                         <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          name="family"
+                          onValueChange={(value) => {
+                            field.onChange(parseInt(value));
+                            console.log(value);
+                          }}
+                          defaultValue={field.value.toString()}
+                          name="familyId"
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -425,37 +450,12 @@ export default function MenuItems() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {families.map((family) => (
-                              <SelectItem key={family} value={family}>
-                                {family}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="supplier"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Proveedor</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          name="supplier"
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecciona un proveedor" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {suppliers.map((supplier) => (
-                              <SelectItem key={supplier} value={supplier}>
-                                {supplier}
+                            {categories.map((category) => (
+                              <SelectItem
+                                key={category.id}
+                                value={category.id.toString()}
+                              >
+                                {category.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -529,7 +529,7 @@ export default function MenuItems() {
                                 className="flex items-center gap-2 mb-4 flex-wrap md:flex-nowrap"
                               >
                                 <Select
-                                  value={ingredient.inventoryProductId.toString()}
+                                  value={ingredient.inventoryProductId?.toString()}
                                   onValueChange={(value) => {
                                     const newIngredients = [...field.value];
                                     newIngredients[index].inventoryProductId =
@@ -554,7 +554,7 @@ export default function MenuItems() {
                                     ))}
                                   </SelectContent>
                                 </Select>
-                               
+
                                 <Input
                                   type="number"
                                   value={ingredient.quantityUsed}
@@ -585,11 +585,13 @@ export default function MenuItems() {
                               onClick={() => {
                                 field.onChange([
                                   ...field.value,
-                                  { inventoryProductId: 0, quantityUsed: 0 },
+                                  { quantityUsed: 0 },
                                 ]);
                               }}
                             >
-                              Agregar otro ingrediente
+                              {field.value.length === 0
+                                ? "Agregar nuevo ingrediente"
+                                : "Agregar otro ingrediente"}
                             </Button>
                           </div>
                         </FormControl>
@@ -597,46 +599,49 @@ export default function MenuItems() {
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="variablePrice"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel>Precio variable</FormLabel>
-                          <FormDescription>
-                            Permitir cambiar el precio en ocasiones especiales
-                          </FormDescription>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="isActive"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel>Activo</FormLabel>
-                          <FormDescription>
-                            ¿Este artículo está disponible?
-                          </FormDescription>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
+
+                  <div className="flex flex-col gap-2">
+                    <FormField
+                      control={form.control}
+                      name="variablePrice"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>Precio variable</FormLabel>
+                            <FormDescription>
+                              Permitir cambiar el precio en ocasiones especiales
+                            </FormDescription>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="isActive"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>Activo</FormLabel>
+                            <FormDescription>
+                              ¿Este artículo está disponible?
+                            </FormDescription>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
                 <Button type="submit" className="self-end" size="lg">
                   Guardar
@@ -652,17 +657,11 @@ export default function MenuItems() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>ID</TableHead>
-              <TableHead>Nombre</TableHead>
-              <TableHead>Cantidad</TableHead>
-              <TableHead>Unidad</TableHead>
-              <TableHead>Precio</TableHead>
-              <TableHead>Familia</TableHead>
-              <TableHead>Proveedor</TableHead>
-              <TableHead>Imprimir en</TableHead>
-              <TableHead>Precio variable</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead>Ingredientes</TableHead>
+              <SortableTableHeadSet
+                columns={tableHeaderColumns}
+                sortConfig={sortConfig}
+                sortFunction={sortItems}
+              />
               <TableHead>Acciones</TableHead>
             </TableRow>
           </TableHeader>
@@ -677,8 +676,7 @@ export default function MenuItems() {
                 <TableCell>{item.quantity}</TableCell>
                 <TableCell>{item.unit}</TableCell>
                 <TableCell>{item.price.toFixed(2)}</TableCell>
-                <TableCell>{item.family}</TableCell>
-                <TableCell>{item.supplier}</TableCell>
+                <TableCell>{item.familyId}</TableCell>
                 <TableCell>
                   {item.printLocations.length > 0
                     ? item.printLocations.join(", ")
@@ -692,7 +690,7 @@ export default function MenuItems() {
                 </TableCell>
                 <TableCell>
                   <ul>
-                    {item.ingredients.map((ing) => (                      
+                    {item.ingredients.map((ing) => (
                       <li key={ing.id}>
                         {ing.stockItem.name}: {ing.quantityUsed}{" "}
                         {ing.stockItem.unit}
@@ -701,20 +699,22 @@ export default function MenuItems() {
                   </ul>
                 </TableCell>
                 <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleEdit(item)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(item.id)}
-                  >
-                    <Trash className="h-4 w-4" />
-                  </Button>
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleEdit(item)}
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      onClick={() => handleDelete(item.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

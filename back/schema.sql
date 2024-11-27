@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS Agent (
     rfc TEXT NOT NULL,
     email TEXT NOT NULL,
     pin TEXT NOT NULL,
-    role TEXT NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('manager', 'cashier', 'waiter', 'cook')),
     isActive BOOLEAN DEFAULT 1
 );
 
@@ -18,11 +18,12 @@ CREATE TABLE IF NOT EXISTS MenuItem (
     quantity DECIMAL NOT NULL,
     unit TEXT NOT NULL,
     isActive BOOLEAN DEFAULT 1,
-    family TEXT NOT NULL,
-    supplier TEXT NOT NULL,
+    familyId INTEGER NOT NULL,
     printLocations TEXT, -- JSON string
     variablePrice BOOLEAN DEFAULT 0,
-    price DECIMAL NOT NULL
+    price DECIMAL NOT NULL,
+
+    FOREIGN KEY (familyId) REFERENCES Category (id)
 );
 
 CREATE TABLE IF NOT EXISTS StockItem (
@@ -31,9 +32,12 @@ CREATE TABLE IF NOT EXISTS StockItem (
     stock DECIMAL NOT NULL,
     unit TEXT NOT NULL,
     isActive BOOLEAN DEFAULT 1,
-    family TEXT NOT NULL,
-    supplier TEXT NOT NULL,
-    cost DECIMAL NOT NULL
+    familyId INTEGER NOT NULL,
+    supplierId INTEGER NOT NULL,
+    cost DECIMAL NOT NULL,
+
+    FOREIGN KEY (supplierId) REFERENCES Supplier (id),
+    FOREIGN KEY (familyId) REFERENCES Category (id)
 );
 
 CREATE TABLE IF NOT EXISTS Ingredients (
@@ -83,7 +87,7 @@ CREATE TABLE IF NOT EXISTS Promo (
     menuItemId INTEGER NOT NULL,
     startDate DATETIME NOT NULL,
     endDate DATETIME NOT NULL,
-    type TEXT NOT NULL CHECK (type IN ('discount', 'buy_x_get_y')),
+    type TEXT NOT NULL CHECK (type IN ('price_discount','percentage_discount', 'buy_x_get_y')),
     discount DECIMAL DEFAULT 0,
     buy_quantity INTEGER,
     pay_quantity INTEGER,
@@ -103,6 +107,21 @@ CREATE TABLE IF NOT EXISTS RecurrentDate (
     startTime TIME NOT NULL,
     endTime TIME NOT NULL,
     FOREIGN KEY (promoId) REFERENCES Promo (id)
+);
+
+CREATE TABLE IF NOT EXISTS Category (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    type TEXT NOT NULL CHECK (type IN ('menu', 'stock'))
+);
+
+CREATE TABLE IF NOT EXISTS Supplier (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    phone TEXT,
+    email TEXT,
+    address TEXT
 );
 
 

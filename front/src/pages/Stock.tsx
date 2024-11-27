@@ -1,44 +1,51 @@
-import { useState, useEffect } from "react";
-import { PlusCircle, Pencil, Trash, DollarSign } from "lucide-react";
+import SortableTableHeadSet from "@/components/SortableTableHeadSet";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-  TableHeader,
-} from "@/components/ui/table";
-import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
-  FormMessage,
+  FormMessage
 } from "@/components/ui/form";
-import * as z from "zod";
-import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { useForm } from "react-hook-form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableRow
+} from "@/components/ui/table";
+import { useToast } from "@/hooks/use-toast";
+import useSortConfig from "@/lib/useSortConfig";
 import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  DollarSign,
+  Edit2,
+  PlusCircle,
+  Trash2
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+
+import type { SortableColumn, StockItem, NewStockItem } from "@/types";
 
 const families = [
   "Alimentos",
@@ -79,15 +86,7 @@ const suppliers = [
 
 const units = ["pieza", "vaso", "botella", "kg", "g", "l", "ml"];
 
-interface FormValues {
-  name: string;
-  stock: number;
-  unit: string;
-  isActive: boolean;
-  family: string;
-  supplier: string;
-  cost: number;
-}
+
 
 const formSchema = z.object({
   name: z.string().trim().min(1, "Nombre requerido"),
@@ -104,19 +103,16 @@ const formSchema = z.object({
     .multipleOf(0.01, "El costo debe ser múltiplo de 0.01"),
 });
 
-interface Item extends FormValues {
-  id: number;
-}
 
 const FETCH_BASE_URL = "http://localhost:3000/menu/stock-items";
 
-const fetchItems = async (): Promise<Item[]> => {
+const fetchItems = async (): Promise<StockItem[]> => {
   const response = await fetch(FETCH_BASE_URL);
-  const data: Item[] = await response.json();
+  const data: StockItem[] = await response.json();
   return data;
 };
 
-const saveItem = async (item: Item): Promise<Item> => {
+const saveItem = async (item: StockItem): Promise<StockItem> => {
   const response = await fetch(`${FETCH_BASE_URL}/${item.id}`, {
     method: "PUT",
     headers: {
@@ -128,7 +124,7 @@ const saveItem = async (item: Item): Promise<Item> => {
   return item;
 };
 
-const createItem = async (values: FormValues): Promise<Item> => {
+const createItem = async (values: NewStockItem): Promise<StockItem> => {
   const response = await fetch(FETCH_BASE_URL, {
     method: "POST",
     headers: {
@@ -138,8 +134,8 @@ const createItem = async (values: FormValues): Promise<Item> => {
   });
 
   if (!response.ok) throw new Error("Error al crear el artículo");
-    const data = await response.json();
-    
+  const data = await response.json();
+
   return { ...values, id: data.id };
 };
 
@@ -150,11 +146,23 @@ const deleteItem = async (id: number): Promise<void> => {
   if (!response.ok) throw new Error("Error al eliminar el artículo");
 };
 
+const tableHeaderColumns: SortableColumn<StockItem>[] = [
+  { key: "id", label: "ID" },
+  { key: "name", label: "Nombre" },
+  { key: "stock", label: "Stock" },
+  { key: "unit", label: "Unidad" },
+  { key: "cost", label: "Costo" },
+  { key: "isActive", label: "Estado" },
+  { key: "familyId", label: "Familia" },
+  { key: "supplierId", label: "Proveedor" },
+];
+
 export default function Stock() {
-  const [items, setItems] = useState<Item[]>([]);
+  const [items, setItems] = useState<StockItem[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<Item | null>(null);
+  const [editingItem, setEditingItem] = useState<StockItem | null>(null);
   const { toast } = useToast();
+  const { sortConfig, sortItems } = useSortConfig<StockItem>(setItems);
 
   const alert = (title: string, description: string, status?: string) =>
     toast({
@@ -163,7 +171,7 @@ export default function Stock() {
       variant: status === "error" ? "destructive" : "default",
     });
 
-  const defaultValues: FormValues = {
+  const defaultValues: NewStockItem = {
     name: "",
     stock: 0,
     unit: "",
@@ -177,6 +185,7 @@ export default function Stock() {
     resolver: zodResolver(formSchema),
     defaultValues,
   });
+
 
   useEffect(() => {
     fetchItems().then(setItems);
@@ -231,7 +240,7 @@ export default function Stock() {
     }
   };
 
-    const handleEdit = (item: Item) => {      
+  const handleEdit = (item: StockItem) => {
     setEditingItem(item);
     form.reset(item);
     setIsDialogOpen(true);
@@ -443,15 +452,12 @@ export default function Stock() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>ID</TableHead>
-              <TableHead>Nombre</TableHead>
-              <TableHead>Stock</TableHead>
-              <TableHead>Unidad</TableHead>
-              <TableHead>Costo</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead>Familia</TableHead>
-              <TableHead>Proveedor</TableHead>
-              <TableHead>Acciones</TableHead>
+                <SortableTableHeadSet
+                  sortFunction={sortItems}
+                  sortConfig={sortConfig}
+                  columns={tableHeaderColumns}
+                />
+                  
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -466,20 +472,22 @@ export default function Stock() {
                 <TableCell>{item.family}</TableCell>
                 <TableCell>{item.supplier}</TableCell>
                 <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleEdit(item)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(item.id)}
-                  >
-                    <Trash className="h-4 w-4" />
-                  </Button>
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleEdit(item)}
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      onClick={() => handleDelete(item.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

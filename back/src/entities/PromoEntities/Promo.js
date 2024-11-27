@@ -28,7 +28,7 @@ class Promo {
         this.pay_quantity = pay_quantity || null;
         this.percentage = percentage || 0;
         this.always = always || false;
-        this.isActive = isActive || true;
+        this.isActive = !!isActive;
         this.name = name;
     }
 

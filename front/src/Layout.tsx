@@ -1,11 +1,13 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
-import { Toaster } from "@/components/ui/toaster"
+import { Toaster } from "@/components/ui/toaster";
 import MenuItems from "@/pages/MenuItems";
 import Agents from "@/pages/Agents";
-import Stock from "./pages/Stock";
-
+import Stock from "@/pages/Stock";
+import Categories from "@/pages/Categories";
+import Suppliers from "@/pages/Suppliers";
+import Promos from "@/pages/Promos";
 
 export default function Layout() {
   return (
@@ -27,7 +29,9 @@ export default function Layout() {
             <Route path="/menu-items" element={<MenuItems />} />
             <Route path="/agents" element={<Agents />} />
             <Route path="/stock" element={<Stock />} />
-
+            <Route path="/categories" element={<Categories />} />
+            <Route path="/suppliers" element={<Suppliers />} />
+            <Route path="/promos" element={<Promos/>} />
           </Routes>
         </main>
       </Router>
