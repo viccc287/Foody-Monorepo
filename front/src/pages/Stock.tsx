@@ -40,46 +40,15 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 
-import type { SortableColumn, StockItem, NewStockItem } from "@/types";
+import type {
+  SortableColumn,
+  StockItem,
+  NewStockItem,
+  Category,
+  Supplier,
+} from "@/types";
 
-const families = [
-  "Alimentos",
-  "Cervezas",
-  "Cocteles",
-  "Mezcal/Tequila",
-  "Whiskies",
-  "Vinos",
-  "Ron",
-  "Vodka",
-  "Ginebra",
-  "Brandy",
-  "Cognac",
-  "Otros",
-];
-
-const suppliers = [
-  "Tecate",
-  "Corona",
-  "Modelo",
-  "Heineken",
-  "Victoria",
-  "Indio",
-  "Pacífico",
-  "Bohemia",
-  "Budweiser",
-  "Stella Artois",
-  "León",
-  "Sol",
-  "XX Lager",
-  "XX Ambar",
-  "Negra Modelo",
-  "Montejo",
-  "Superior",
-  "Barrilito",
-  "Proveedor Genérico",
-];
-
-const units = ["pieza", "vaso", "botella", "kg", "g", "l", "ml"];
+const units = ["pieza", "vaso", "botella", "cartón", "kg", "g", "l", "ml"];
 
 const formSchema = z.object({
   name: z.string().trim().min(1, "Nombre requerido"),
@@ -88,36 +57,57 @@ const formSchema = z.object({
     .min(0, "El stock debe ser mayor o igual a 0"),
   unit: z.string().trim().min(1, "Unidad requerida"),
   isActive: z.boolean(),
-  category: z.string().trim().min(1, "Categoría requerida"),
-  supplier: z.string().trim().min(1, "Proveedor requerido"),
+  categoryId: z.number(),
+  supplierId: z.number(),
   cost: z
     .number({ invalid_type_error: "Costo requerido" })
     .min(0, "El costo debe ser mayor o igual a 0")
     .multipleOf(0.01, "El costo debe ser múltiplo de 0.01"),
 });
 
-const FETCH_BASE_URL = "http://localhost:3000/menu/stock-items";
+const BASE_FETCH_URL = "http://localhost:3000/menu/stock-items";
+const CATEGORY_FETCH_URL = "http://localhost:3000/categories?type=stock";
+const SUPPLIER_FETCH_URL = "http://localhost:3000/suppliers";
 
 const fetchItems = async (): Promise<StockItem[]> => {
-  const response = await fetch(FETCH_BASE_URL);
+  const response = await fetch(BASE_FETCH_URL);
   const data: StockItem[] = await response.json();
+
+  if (!response.ok) throw new Error("Error al cargar los artículos");
+  return data;
+};
+
+const fetchCategories = async (): Promise<Category[]> => {
+  const response = await fetch(CATEGORY_FETCH_URL);
+  const data: Category[] = await response.json();
+  if (!response.ok) throw new Error("Error al cargar las categorías");
+  return data;
+};
+
+const fetchSuppliers = async (): Promise<Supplier[]> => {
+  const response = await fetch(SUPPLIER_FETCH_URL);
+  const data: Supplier[] = await response.json();
+  if (!response.ok) throw new Error("Error al cargar los proveedores");
   return data;
 };
 
 const saveItem = async (item: StockItem): Promise<StockItem> => {
-  const response = await fetch(`${FETCH_BASE_URL}/${item.id}`, {
+  const response = await fetch(`${BASE_FETCH_URL}/${item.id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify(item),
   });
+
+  console.log(item);
+
   if (!response.ok) throw new Error("Error al guardar el artículo");
   return item;
 };
 
 const createItem = async (values: NewStockItem): Promise<StockItem> => {
-  const response = await fetch(FETCH_BASE_URL, {
+  const response = await fetch(BASE_FETCH_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -128,11 +118,11 @@ const createItem = async (values: NewStockItem): Promise<StockItem> => {
   if (!response.ok) throw new Error("Error al crear el artículo");
   const data = await response.json();
 
-  return { ...values, id: data.id };
+  return { ...values, id: data.id } as StockItem;
 };
 
 const deleteItem = async (id: number): Promise<void> => {
-  const response = await fetch(`${FETCH_BASE_URL}/${id}`, {
+  const response = await fetch(`${BASE_FETCH_URL}/${id}`, {
     method: "DELETE",
   });
   if (!response.ok) throw new Error("Error al eliminar el artículo");
@@ -151,6 +141,8 @@ const tableHeaderColumns: SortableColumn<StockItem>[] = [
 
 export default function Stock() {
   const [items, setItems] = useState<StockItem[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<StockItem | null>(null);
   const { toast } = useToast();
@@ -168,8 +160,8 @@ export default function Stock() {
     stock: 0,
     unit: "",
     isActive: true,
-    category: "",
-    supplier: "",
+    categoryId: undefined,
+    supplierId: undefined,
     cost: 0,
   };
 
@@ -178,8 +170,12 @@ export default function Stock() {
     defaultValues,
   });
 
+  const unit = form.watch("unit") || "unidad";
+
   useEffect(() => {
     fetchItems().then(setItems);
+    fetchCategories().then(setCategories);
+    fetchSuppliers().then(setSuppliers);
   }, []);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
@@ -339,7 +335,7 @@ export default function Stock() {
                     name="cost"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Costo por unidad</FormLabel>
+                        <FormLabel>Costo por {unit}</FormLabel>
                         <FormControl>
                           <div className="flex items-center gap-1">
                             <DollarSign size={16} />
@@ -361,22 +357,27 @@ export default function Stock() {
                   />
                   <FormField
                     control={form.control}
-                    name="category"
+                    name="categoryId"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Categoría</FormLabel>
                         <FormControl>
                           <Select
-                            onValueChange={field.onChange}
-                            value={field.value}
+                            onValueChange={(value) => {
+                              field.onChange(parseInt(value));
+                            }}
+                            value={field.value?.toString() || ""}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Selecciona una categoría" />
                             </SelectTrigger>
                             <SelectContent>
-                              {families.map((category) => (
-                                <SelectItem key={category} value={category}>
-                                  {category}
+                              {categories.map((category) => (
+                                <SelectItem
+                                  key={category.id}
+                                  value={category.id.toString()}
+                                >
+                                  {category.name}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -388,22 +389,27 @@ export default function Stock() {
                   />
                   <FormField
                     control={form.control}
-                    name="supplier"
+                    name="supplierId"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Proveedor</FormLabel>
                         <FormControl>
                           <Select
-                            onValueChange={field.onChange}
-                            value={field.value}
+                            onValueChange={(value) => {
+                              field.onChange(parseInt(value));
+                            }}
+                            value={field.value?.toString() || ""}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Selecciona un proveedor" />
                             </SelectTrigger>
                             <SelectContent>
                               {suppliers.map((supplier) => (
-                                <SelectItem key={supplier} value={supplier}>
-                                  {supplier}
+                                <SelectItem
+                                  key={supplier.id}
+                                  value={supplier.id.toString()}
+                                >
+                                  {supplier.name}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -464,8 +470,15 @@ export default function Stock() {
                 >
                   {item.isActive ? "Activo" : "Inactivo"}
                 </TableCell>
-                <TableCell>{item.categoryId}</TableCell>
-                <TableCell>{item.supplierId}</TableCell>
+                <TableCell>
+                  {categories.find(
+                    (category) => category.id === item.categoryId
+                  )?.name || "Categoría inexistente"}
+                </TableCell>
+                <TableCell>
+                  {suppliers.find((supplier) => supplier.id === item.supplierId)
+                    ?.name || "Proveedor inexistente"}
+                </TableCell>
                 <TableCell>
                   <div className="flex space-x-2">
                     <Button

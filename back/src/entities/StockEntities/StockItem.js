@@ -3,14 +3,14 @@ import db from "../../database/connection";
 class StockItem {
   static tableName = "StockItem";
 
-  constructor({ id, name, stock, unit, isActive, category, supplier, cost }) {
+  constructor({ id, name, stock, unit, isActive, categoryId, supplierId, cost }) {
     this.id = id || null;
     this.name = name;
     this.stock = stock;
     this.unit = unit;
     this.isActive = !!isActive;
-    this.category = category;
-    this.supplier = supplier;
+    this.categoryId = categoryId;
+    this.supplierId = supplierId;
     this.cost = cost;
   }
 
@@ -37,7 +37,7 @@ class StockItem {
 
   #createRecord() {
     const stmt = db.prepare(
-      `INSERT INTO ${StockItem.tableName} (name, stock, unit, isActive, category, supplier, cost)
+      `INSERT INTO ${StockItem.tableName} (name, stock, unit, isActive, categoryId, supplierId, cost)
             VALUES (?, ?, ?, ?, ?, ?, ?)`
     );
     const result = stmt.run(
@@ -45,8 +45,8 @@ class StockItem {
       this.stock,
       this.unit,
       this.isActive ? 1 : 0,
-      this.category,
-      this.supplier,
+      this.categoryId,
+      this.supplierId,
       this.cost
     );
     this.id = result.lastInsertRowid;
@@ -56,7 +56,7 @@ class StockItem {
   #updateRecord() {
     const stmt = db.prepare(
       `UPDATE ${StockItem.tableName}
-            SET name = ?, stock = ?, unit = ?, isActive = ?, category = ?, supplier = ?, cost = ?
+            SET name = ?, stock = ?, unit = ?, isActive = ?, categoryId = ?, supplierId = ?, cost = ?
             WHERE id = ?`
     );
     const result = stmt.run(
@@ -64,8 +64,8 @@ class StockItem {
       this.stock,
       this.unit,
       this.isActive ? 1 : 0,
-      this.category,
-      this.supplier,
+      this.categoryId,
+      this.supplierId,
       this.cost,
       this.id
     );

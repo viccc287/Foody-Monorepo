@@ -1,5 +1,3 @@
-// FILE: Supplier.js
-
 import db from "../../database/connection";
 
 class Supplier {

@@ -93,7 +93,7 @@ type MenuItem = {
 
 const printLocations = ["Cocina", "Caja", "Barra"];
 
-const units = ["pieza", "vaso", "botella", "kg", "g", "l", "ml"];
+const units = ["pieza", "orden", "vaso", "botella", "kg", "g", "l", "ml"];
 
 const formSchema = z.object({
   name: z.string().trim().min(1, "Nombre requerido"),
@@ -127,21 +127,21 @@ const CATEGORY_FETCH_URL = "http://localhost:3000/categories?type=menu";
 const fetchItems = async (): Promise<MenuItem[]> => {
   const response = await fetch(`${BASE_FETCH_URL}/menu-items-with-ingredients`);
   const data: MenuItem[] = await response.json();
-
+  if (!response.ok) throw new Error("Error al obtener los artículos del menú");
   return data;
 };
 
 const fetchStockItems = async (): Promise<StockItem[]> => {
   const response = await fetch(`${BASE_FETCH_URL}/stock-items`);
   const data: StockItem[] = await response.json();
-
+  if (!response.ok) throw new Error("Error al obtener los artículos del inventario");
   return data;
 };
 
 const fetchCategories = async (): Promise<Category[]> => {
   const response = await fetch(CATEGORY_FETCH_URL);
   const data: Category[] = await response.json();
-
+  if (!response.ok) throw new Error("Error al obtener las categorías");
   return data;
 };
 
@@ -426,7 +426,6 @@ export default function MenuItems() {
                         <Select
                           onValueChange={(value) => {
                             field.onChange(parseInt(value));
-                            console.log(value);
                           }}
                           defaultValue={field.value.toString()}
                           name="categoryId"

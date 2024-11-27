@@ -3,11 +3,13 @@ export interface NewStockItem {
   stock: number;
   unit: string;
   isActive: boolean;
-  categoryId: number;
-  supplierId: number;
+  categoryId: number | undefined;
+  supplierId: number | undefined
   cost: number;
 }
 
-export interface StockItem extends NewStockItem {
+export interface StockItem extends Omit <NewStockItem, 'categoryId' | 'supplierId'> {
   id: number;
+  categoryId: number;
+  supplierId: number;
 }
