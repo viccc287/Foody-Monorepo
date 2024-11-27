@@ -3,14 +3,13 @@ export interface NewItem {
   quantity: number;
   unit: string;
   isActive: boolean;
-  category: string;
-  supplier: string;
+  categoryId: number | undefined;
   printLocations: string[];
   variablePrice: boolean;
   recipe?: string;
   price: number;
 }
 
-export interface Item extends NewItem {
+export interface MenuItem extends NewItem {
   id: number;
 }

@@ -100,8 +100,6 @@ const saveItem = async (item: StockItem): Promise<StockItem> => {
     body: JSON.stringify(item),
   });
 
-  console.log(item);
-
   if (!response.ok) throw new Error("Error al guardar el artículo");
   return item;
 };

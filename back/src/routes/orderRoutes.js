@@ -5,145 +5,211 @@ import OrderItem from "../entities/OrderEntities/OrderItem";
 const router = Router();
 
 /**
- * =================  Routes for Orders  =================  
+ * =================  Routes for Orders  =================
  */
 
 // Get all orders
+// Get all orders
 router.get("/", (req, res) => {
-    try {
-        const orders = Order.getAll();
-        res.json(orders);
-    } catch (error) {
-        res.status(500).json({ error: "Failed to fetch orders. " + error.message });
-    }
+  try {
+    const orders = Order.getAll();
+
+    // Enhance each order with items and calculations
+    const enhancedOrders = orders.map((order) => {
+      const orderItems = OrderItem.getByOrderId(order.id);
+      let subtotal = 0;
+      let discountTotal = 0;
+
+      orderItems.forEach((item) => {
+        subtotal += item.subtotal;
+        discountTotal += item.discountApplied;
+      });
+
+      const total = subtotal - discountTotal < 0 ? 0 : subtotal - discountTotal;
+
+      order.subtotal = subtotal;
+      order.discountTotal = discountTotal;
+      order.total = total;
+
+      return {
+        ...order,
+        orderItems,
+        subtotal,
+        discountTotal,
+      };
+    });
+
+    res.json(enhancedOrders);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch orders. " + error.message });
+  }
+});
+
+router.get("/active", (req, res) => {
+  try {
+    const orders = Order.getByStatus("active");
+
+    // Enhance each order with items and calculations
+    const enhancedOrders = orders.map((order) => {
+      const orderItems = OrderItem.getByOrderId(order.id);
+      let subtotal = 0;
+      let discountTotal = 0;
+
+      orderItems.forEach((item) => {
+        subtotal += item.subtotal;
+        discountTotal += item.discountApplied;
+      });
+
+      const total = subtotal - discountTotal < 0 ? 0 : subtotal - discountTotal;
+
+      order.subtotal = subtotal;
+      order.discountTotal = discountTotal;
+      order.total = total;
+
+      return {
+        ...order,
+        orderItems,
+        subtotal,
+        discountTotal,
+      };
+    });
+
+    res.json(enhancedOrders);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch orders. " + error.message });
+  }
 });
 
 // Get a specific order by ID
 router.get("/:id", (req, res) => {
-    try {
-        const { id } = req.params;
-        const order = Order.getById(Number(id));
-        if (order) {
-            res.json(order);
-        } else {
-            res.status(404).json({ error: "Order not found." });
-        }
-    } catch (error) {
-        res.status(500).json({ error: "Failed to fetch order. " + error.message });
-    }
+  const orderId = req.params.id;
+  const order = Order.getById(orderId);
+
+  if (!order) {
+    return res.status(404).json({ message: "Order not found" });
+  }
+
+  const orderItems = OrderItem.getByOrderId(orderId);
+  let subtotal = 0;
+  let discountTotal = 0;
+
+  orderItems.forEach((item) => {
+    subtotal += item.subtotal;
+    discountTotal += item.discountApplied;
+  });
+
+  const total = subtotal - discountTotal < 0 ? 0 : subtotal - discountTotal;
+
+  order.subtotal = subtotal;
+  order.discountTotal = discountTotal;
+  order.total = total;
+
+  res.json({
+    ...order,
+    orderItems,
+  });
 });
 
 // Create a new order
 router.post("/", (req, res) => {
-    try {
-        const order = new Order(req.body);
-        const id = order.save();
-        res.status(201).json({ id });
-    } catch (error) {
-        res.status(500).json({ error: "Failed to create order. " + error.message });
-    }
+  try {
+    const order = new Order(req.body);
+    order.save();
+    res.status(201).json(order);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to create order. " + error.message });
+  }
 });
 
 // Update an existing order
 router.put("/:id", (req, res) => {
-    try {
-        const { id } = req.params;
-        const order = Order.getById(Number(id));
-        if (order) {
-            Object.assign(order, req.body);
-            order.save();
-            res.json({ message: "Order updated successfully." });
-        } else {
-            res.status(404).json({ error: "Order not found." });
-        }
-    } catch (error) {
-        res.status(500).json({ error: "Failed to update order. " + error.message });
+  try {
+    const { id } = req.params;
+    const order = Order.getById(Number(id));
+    if (order) {
+      Object.assign(order, req.body);
+      order.save();
+      res.json({ message: "Order updated successfully." });
+    } else {
+      res.status(404).json({ error: "Order not found." });
     }
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update order. " + error.message });
+  }
 });
 
 // Delete an order
 router.delete("/:id", (req, res) => {
-    try {
-        const { id } = req.params;
-        const order = Order.getById(Number(id));
-        if (order) {
-            order.delete();
-            res.json({ message: "Order deleted successfully." });
-        } else {
-            res.status(404).json({ error: "Order not found." });
-        }
-    } catch (error) {
-        res.status(500).json({ error: "Failed to delete order. " + error.message });
+  try {
+    const { id } = req.params;
+    const order = Order.getById(Number(id));
+    if (order) {
+      order.delete();
+      res.json({ message: "Order deleted successfully." });
+    } else {
+      res.status(404).json({ error: "Order not found." });
     }
+  } catch (error) {
+    res.status(500).json({ error: "Failed to delete order. " + error.message });
+  }
 });
 
-/**
- * ================= Routes for OrderItems ================= 
- */
-
-// Get all order items just for testing purposes
-router.get("/order-items", (req, res) => {
-    try {
-        const orderItems = OrderItem.getAll();
-        res.json(orderItems);
-    } catch (error) {
-        res.status(500).json({ error: "Failed to fetch order items. " + error.message });
-    }
+router.get("/:orderId/order-items", (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const orderItems = OrderItem.getByOrderId(Number(orderId));
+    res.json(orderItems);
+  } catch (error) {
+    res
+      .status(500)
+      .json({ error: "Failed to fetch order items. " + error.message });
+  }
 });
 
-// Get all items for a specific order
-router.get("/order-items/order/:orderId", (req, res) => {
+router.post("/order/:id/charge", async (req, res) => {
     try {
-        const { orderId } = req.params;
-        const orderItems = OrderItem.getByOrderId(Number(orderId));
-        res.json(orderItems);
+      const { id } = req.params;
+      const { tip, paymentMethod, billedById } = req.body;
+  
+      const order = Order.getById(Number(id));
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+  
+      order.tip = tip;
+      order.paymentMethod = paymentMethod;
+      order.status = "paid";
+      order.billedById = billedById;
+  
+      order.save();
+  
+      res.status(200).json({ message: "Order charged successfully", order });
     } catch (error) {
-        res.status(500).json({ error: "Failed to fetch order items for the order. " + error.message });
+      res.status(500).json({ message: "Server error", error });
     }
-});
-
-// Create a new order item. This one is a bit different because we need to pass the order ID in the body
-router.post("/order-items", (req, res) => {
+  });
+  
+  // Ruta para cancelar la orden
+  router.post("/order/:id/cancel", async (req, res) => {
     try {
-        const orderItem = new OrderItem(req.body);
-        const id = orderItem.save();
-        res.status(201).json({ id });
+      const { id } = req.params;
+      const { cancelReason } = req.body;
+  
+      const order = Order.getById(Number(id));
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+  
+      order.status = "cancelled";
+      order.cancelledAt = new Date().toISOString();
+      order.cancelReason = cancelReason;
+  
+      order.save();
+  
+      res.status(200).json({ message: "Order cancelled successfully", order });
     } catch (error) {
-        res.status(500).json({ error: "Failed to create order item. " + error.message });
+      res.status(500).json({ message: "Server error", error });
     }
-});
-
-// Update an order item
-router.put("/order-items/:id", (req, res) => {
-    try {
-        const { id } = req.params;
-        const orderItem = OrderItem.getById(Number(id));
-        if (orderItem) {
-            Object.assign(orderItem, req.body);
-            orderItem.save();
-            res.json({ message: "OrderItem updated successfully." });
-        } else {
-            res.status(404).json({ error: "OrderItem not found." });
-        }
-    } catch (error) {
-        res.status(500).json({ error: "Failed to update order item. " + error.message });
-    }
-});
-
-// Delete an order item
-router.delete("/order-items/:id", (req, res) => {
-    try {
-        const { id } = req.params;
-        const orderItem = OrderItem.getById(Number(id));
-        if (orderItem) {
-            orderItem.delete();
-            res.json({ message: "OrderItem deleted successfully." });
-        } else {
-            res.status(404).json({ error: "OrderItem not found." });
-        }
-    } catch (error) {
-        res.status(500).json({ error: "Failed to delete order item. " + error.message });
-    }
-});
+  });
 
 export default router;

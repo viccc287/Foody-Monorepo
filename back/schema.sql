@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS "Order" (
     total DECIMAL NOT NULL,
     tip DECIMAL DEFAULT 0,
     createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-    paymentMethod TEXT NOT NULL,
+    paymentMethod TEXT CHECK (paymentMethod IN ('cash', 'card')),
     cancelledAt DATETIME,
     cancelReason TEXT,
     status TEXT NOT NULL CHECK (status IN ('active', 'paid', 'cancelled', 'unpaid')),
@@ -76,10 +76,15 @@ CREATE TABLE IF NOT EXISTS OrderItem (
     quantity INTEGER NOT NULL,
     subtotal DECIMAL NOT NULL,
     discountApplied DECIMAL DEFAULT 0,
+    total DECIMAL NOT NULL,
     promoName TEXT,
     comments TEXT,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    quantityHistory TEXT DEFAULT '[]',
+    appliedPromos TEXT DEFAULT '[]',
+
     FOREIGN KEY (menuItemId) REFERENCES MenuItem (id),
-    FOREIGN KEY (orderId) REFERENCES "Order" (id)
+    FOREIGN KEY (orderId) REFERENCES "Order" (id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS Promo (
@@ -88,10 +93,10 @@ CREATE TABLE IF NOT EXISTS Promo (
     startDate DATETIME NOT NULL,
     endDate DATETIME NOT NULL,
     type TEXT NOT NULL CHECK (type IN ('price_discount','percentage_discount', 'buy_x_get_y')),
-    discount DECIMAL DEFAULT 0,
+    discount DECIMAL ,
     buy_quantity INTEGER,
     pay_quantity INTEGER,
-    percentage DECIMAL DEFAULT 0,
+    percentage DECIMAL,
     always BOOLEAN DEFAULT 0,
     isActive BOOLEAN DEFAULT 1,
     name TEXT NOT NULL,
@@ -103,7 +108,7 @@ CREATE TABLE IF NOT EXISTS Promo (
 CREATE TABLE IF NOT EXISTS RecurrentDate (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     promoId INTEGER NOT NULL,
-    days_of_week TEXT NOT NULL,
+    dayOfWeek TEXT NOT NULL,
     startTime TIME NOT NULL,
     endTime TIME NOT NULL,
     FOREIGN KEY (promoId) REFERENCES Promo (id)

@@ -4,6 +4,8 @@ import {
   CupSoda,
   Handshake,
   Home,
+  List,
+  ListTodo,
   PercentCircle,
   Shapes,
   Truck,
@@ -76,6 +78,11 @@ const items = [
     url: "promos",
     icon: PercentCircle,
   },
+  {
+    title: "Órdenes",
+    url: "orders",
+    icon: ListTodo,
+  }
 ];
 
 export function AppSidebar() {

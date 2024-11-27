@@ -124,7 +124,6 @@ router.post("/menu-items", (req, res) => {
       ingredients: ingredientsWithStockInfo,
     });
   } catch (error) {
-    console.log(error);
 
     res
       .status(500)

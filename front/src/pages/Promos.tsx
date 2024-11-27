@@ -1,3 +1,4 @@
+import SortableTableHeadSet from "@/components/SortableTableHeadSet";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -19,27 +20,27 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-} from "@/components/ui/table";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { NewPromo, Promo, SortableColumn } from "@/types";
+import useSortConfig from "@/lib/useSortConfig";
+import { Promo, SortableColumn, MenuItem, FormValues } from "@/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   DollarSign,
   Edit2,
-  Pencil,
   Percent,
   PlusCircle,
   Trash,
@@ -48,38 +49,7 @@ import {
 import { useEffect, useState } from "react";
 import { set, useForm } from "react-hook-form";
 import { z } from "zod";
-import useSortConfig from "@/lib/useSortConfig";
-import SortableTableHeadSet from "@/components/SortableTableHeadSet";
 
-type DaysOfWeek =
-  | "Monday"
-  | "Tuesday"
-  | "Wednesday"
-  | "Thursday"
-  | "Friday"
-  | "Saturday"
-  | "Sunday";
-
-interface FormValues {
-  menuItemId: number;
-  startDate: Date;
-  endDate: Date;
-  type: string;
-  discount?: number;
-  buy_quantity?: number;
-  pay_quantity?: number;
-  percentage?: number;
-  always: boolean;
-  isActive: boolean;
-  recurrentDateId?: number;
-  name: string;
-  availability: {
-    [key: string]: {
-      startTime: string | null; // Permitir null
-      endTime: string | null; // Permitir null
-    };
-  };
-}
 const availabilitySchema = z.object({
   startTime: z.string().nullable(),
   endTime: z.string().nullable(),
@@ -88,9 +58,8 @@ const availabilitySchema = z.object({
 const formSchema = z
   .object({
     menuItemId: z
-      .number()
-      .int("Debe ser un número entero")
-      .min(1, "El ID del elemento del menú es requerido"),
+      .number({ required_error: "El artículo del menú es requerido" })
+      .int("Debe ser un número entero"),
     startDate: z
       .date()
       .refine((value) => !isNaN(value.getTime()), "Fecha de inicio inválida"),
@@ -100,23 +69,23 @@ const formSchema = z
     type: z.string().trim().min(1, "El tipo es requerido"),
     discount: z
       .number()
-      .min(0, "El descuento no puede ser negativo")
-      .optional(),
+      .min(0.01, "El descuento debe ser mayor a 0.01")
+      .nullable(),
     buy_quantity: z
       .number({ invalid_type_error: "Debe ser un número válido" })
       .int("Debe ser un número entero")
       .min(1, "La cantidad de compra mínima es 1")
-      .optional(),
+      .nullable(),
     pay_quantity: z
       .number({ invalid_type_error: "Debe ser un número válido" })
       .int("Debe ser un número entero")
       .min(1, "La cantidad de pago mínima es 1")
-      .optional(),
+      .nullable(),
     percentage: z
       .number({ invalid_type_error: "Debe ser un número válido" })
       .min(0.01, "El porcentaje debe ser mayor a 0.01")
       .max(100, "El porcentaje no puede ser mayor al 100%")
-      .optional(),
+      .nullable(),
     always: z.boolean(),
     isActive: z.boolean(),
     recurrentDateId: z
@@ -183,6 +152,9 @@ const formSchema = z
     }
   );
 
+const MENUITEM_FETCH_URL = "http://localhost:3000/menu/menu-items";
+const BASE_FETCH_URL = "http://localhost:3000/promos";
+
 const fetchPromos = async (): Promise<Promo[]> => {
   const response = await fetch(
     "http://localhost:3000/promos/promos-with-availability"
@@ -199,23 +171,24 @@ const fetchPromos = async (): Promise<Promo[]> => {
   return data;
 };
 
+const fetchMenuItems = async (): Promise<MenuItem[]> => {
+  const response = await fetch(MENUITEM_FETCH_URL);
+  const data: MenuItem[] = await response.json();
+  return data;
+};
+
 const createPromo = async (values: FormValues): Promise<Promo> => {
   const payload: Promo = {
     ...values,
   };
 
-  console.log("estoy en createPromo y esta es la availability ", values);
-
-  const response = await fetch(
-    "http://localhost:3000/promos/promos-with-availability",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    }
-  );
+  const response = await fetch(`${BASE_FETCH_URL}/promos-with-availability`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
 
   if (!response.ok) {
     const errorResponse = await response.text();
@@ -233,7 +206,7 @@ const savePromo = async (promo: Promo): Promise<Promo> => {
     console.log("Datos enviados en savePromo:", JSON.stringify(promo, null, 2));
 
     const response = await fetch(
-      `http://localhost:3000/promos/promos-with-availability/${promo.id}`,
+      `${BASE_FETCH_URL}/promos-with-availability/${promo.id}`,
       {
         method: "PUT",
         headers: {
@@ -317,6 +290,7 @@ const daysTranslations = {
 
 export default function Promos() {
   const [promos, setPromos] = useState<Promo[]>([]);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPromo, setEditingPromo] = useState<Promo | null>(null);
   const [selectedType, setSelectedType] = useState("");
@@ -331,9 +305,9 @@ export default function Promos() {
     });
 
   const defaultValues: FormValues = {
-    menuItemId: 0,
-    startDate: new Date(), // no null, solo un Date válido
-    endDate: new Date(),
+    menuItemId: null,
+    startDate: new Date(new Date().setHours(0, 0, 0, 0)), // Primera hora de hoy
+    endDate: new Date(new Date().setHours(24, 0, 0, 0)), // Primera hora de mañana
     type: "",
     always: false,
     isActive: true,
@@ -347,27 +321,31 @@ export default function Promos() {
       Saturday: { startTime: null, endTime: null },
       Sunday: { startTime: null, endTime: null },
     },
+    discount: null,
+    buy_quantity: null,
+    pay_quantity: null,
+    percentage: null,
   };
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema), // Desactiva la validación temporalmente
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
     defaultValues,
   });
 
   useEffect(() => {
     fetchPromos().then(setPromos);
+    fetchMenuItems().then(setMenuItems);
   }, []);
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    console.log("editingPromo:", editingPromo);
+  useEffect(() => {
+    if (!isDialogOpen) setSelectedType("");
+  }, [isDialogOpen]);
 
+  const onSubmit = async (values: FormValues) => {
     try {
-      console.log("Enviando datos originales desde el formulario:", values);
-
       // Si no estamos editando una promoción, creamos una nueva
       if (!editingPromo) {
         const newPromo = await createPromo(values);
-        console.log("Nueva promoción creada:", newPromo);
 
         // Actualizamos la lista de promociones
         setPromos([...promos, newPromo]);
@@ -396,11 +374,6 @@ export default function Promos() {
       form.reset(defaultValues);
     } catch (error) {
       console.error("Error al enviar el formulario:", error);
-      console.log(
-        "Error al crear promoción",
-        "Por favor, verifica los datos ingresados.",
-        "error"
-      );
     }
   };
 
@@ -457,6 +430,17 @@ export default function Promos() {
             </DialogHeader>
             <Form {...form}>
               <form
+                /* onSubmit={(e) => {
+                  e.preventDefault();
+                  const results = formSchema.safeParse(form.getValues());
+
+                  if (!results.success) {
+                    console.error("Errores de validación:", results.error.errors);
+                    return;
+                  }
+              
+                  form.handleSubmit(onSubmit)();
+                }} */
                 onSubmit={form.handleSubmit(onSubmit)}
                 className="flex flex-col space-y-4"
               >
@@ -492,7 +476,9 @@ export default function Promos() {
                             }
                             onChange={(e) => {
                               // Convierte la cadena de entrada a un objeto Date antes de actualizar el campo
-                              field.onChange(new Date(e.target.value));
+                              field.onChange(
+                                new Date(e.target.value + "T00:00:00")
+                              );
                             }}
                           />
                         </FormControl>
@@ -519,7 +505,9 @@ export default function Promos() {
                             }
                             onChange={(e) => {
                               // Convierte la cadena de entrada a un objeto Date antes de actualizar el campo
-                              field.onChange(new Date(e.target.value));
+                              field.onChange(
+                                new Date(e.target.value + "T00:00:00")
+                              );
                             }}
                           />
                         </FormControl>
@@ -532,17 +520,30 @@ export default function Promos() {
                     name="menuItemId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Artículo</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="Id"
-                            {...field}
-                            onChange={(e) =>
-                              field.onChange(Number(e.target.value))
-                            }
-                          />
-                        </FormControl>
+                        <FormLabel>Artículo del menú</FormLabel>
+                        <Select
+                          onValueChange={(value) => {
+                            field.onChange(parseInt(value));
+                          }}
+                          defaultValue={field.value?.toString() || ""}
+                          name="menuItemId"
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecciona un artículo del menú" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {menuItems.map((menuItem) => (
+                              <SelectItem
+                                key={menuItem.id}
+                                value={menuItem.id.toString()}
+                              >
+                                {menuItem.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -722,7 +723,7 @@ export default function Promos() {
                       </div>
                       <FormField
                         control={form.control}
-                        name={`availability.${daysInEnglish[index]}.startTime`} // Índice numérico en lugar de daysInEnglish[index]
+                        name={`availability.${daysInEnglish[index]}.startTime`}
                         render={({ field }) => (
                           <FormItem>
                             <FormControl>
@@ -730,8 +731,8 @@ export default function Promos() {
                                 type="time"
                                 className="w-full sm:w-auto"
                                 {...field}
-                                value={field.value || ""} // Proporcionamos un valor predeterminado si field.value es undefined
-                                onChange={(e) => field.onChange(e.target.value)} // Aseguramos que el valor se actualice correctamente
+                                value={field.value || ""}
+                                onChange={(e) => field.onChange(e.target.value)}
                               />
                             </FormControl>
                             <FormMessage />
@@ -743,7 +744,7 @@ export default function Promos() {
 
                       <FormField
                         control={form.control}
-                        name={`availability.${daysInEnglish[index]}.endTime`} // Índice numérico en lugar de daysInEnglish[index]
+                        name={`availability.${daysInEnglish[index]}.endTime`}
                         render={({ field }) => (
                           <FormItem>
                             <FormControl>
@@ -751,14 +752,32 @@ export default function Promos() {
                                 type="time"
                                 className="w-full sm:w-auto"
                                 {...field}
-                                value={field.value || ""} // Proporcionamos un valor predeterminado si field.value es undefined
-                                onChange={(e) => field.onChange(e.target.value)} // Aseguramos que el valor se actualice correctamente
+                                value={field.value || ""}
+                                onChange={(e) => field.onChange(e.target.value)}
                               />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          form.setValue(
+                            `availability.${daysInEnglish[index]}.startTime`,
+                            null
+                          );
+                          form.setValue(
+                            `availability.${daysInEnglish[index]}.endTime`,
+                            null
+                          );
+                        }}
+                      >
+                        <Trash />
+                      </Button>
                     </div>
                   ))}
 
@@ -842,10 +861,10 @@ export default function Promos() {
                 <TableCell>{promo.name}</TableCell>
                 <TableCell>{promo.menuItemId}</TableCell>
                 <TableCell>
-                  {new Date(promo.startDate).toLocaleDateString()}
+                  {new Date(promo.startDate).toLocaleString()}
                 </TableCell>
                 <TableCell>
-                  {new Date(promo.endDate).toLocaleDateString()}
+                  {new Date(promo.endDate).toLocaleString()}
                 </TableCell>
                 <TableCell>
                   {typesInSpanish[promo.type as keyof typeof typesInSpanish]}
@@ -884,6 +903,7 @@ export default function Promos() {
                   className={promo.isActive ? "text-green-600" : "text-red-600"}
                 >
                   {promo.isActive ? "Activa" : "Inactiva"}
+                  {new Date(promo.endDate) < new Date() && " (Expirada)"}
                 </TableCell>
                 <TableCell>
                   <ul>

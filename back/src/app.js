@@ -7,6 +7,7 @@ import orderRoutes from "./routes/orderRoutes";
 import promoRoutes from "./routes/promoRoutes";
 import categoryRoutes from "./routes/categoryRoutes";
 import supplierRoutes from "./routes/supplierRoutes";
+import orderItemRoutes from "./routes/orderItemRoutes";
 import seed from "./database/seed";
 
 const app = express();
@@ -17,10 +18,11 @@ app.use("/items", itemRoutes);
 app.use("/agents", agentRoutes);
 app.use("/menu", menuRoutes);
 app.use("/orders", orderRoutes);
+app.use("/order-items", orderItemRoutes);
 app.use("/promos", promoRoutes);
-app.use("/categories", categoryRoutes)
-app.use("/suppliers", supplierRoutes)
-app.use('/images', express.static('storage/images'));
+app.use("/categories", categoryRoutes);
+app.use("/suppliers", supplierRoutes);
+app.use("/images", express.static("storage/images"));
 
 seed();
 export default app;

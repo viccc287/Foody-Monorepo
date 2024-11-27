@@ -102,7 +102,7 @@ const formSchema = z.object({
     .min(1, "La cantidad debe ser mayor a 0"),
   unit: z.string().trim().min(1, "Unidad requerida"),
   isActive: z.boolean(),
-  categoryId: z.number(),
+  categoryId: z.number({ required_error: "Categoría requerida"}),
   printLocations: z.array(z.string()),
   variablePrice: z.boolean(),
   price: z
@@ -170,7 +170,6 @@ const createItem = async (values: FormValues): Promise<MenuItem> => {
     body: JSON.stringify(values),
   });
 
-  console.log("VALUES SENT ON CREATE: ", values);
 
   if (!response.ok) throw new Error("Error al crear el artículo");
   const data = await response.json();
@@ -235,7 +234,6 @@ export default function MenuItems() {
 
   useEffect(() => {
     fetchItems().then(setItems);
-    console.log("ITEMS: ", items);
 
     fetchStockItems().then(setStockItems);
     fetchCategories().then(setCategories);
@@ -427,7 +425,7 @@ export default function MenuItems() {
                           onValueChange={(value) => {
                             field.onChange(parseInt(value));
                           }}
-                          defaultValue={field.value.toString()}
+                          defaultValue={field.value?.toString() || ""}
                           name="categoryId"
                         >
                           <FormControl>
@@ -661,7 +659,7 @@ export default function MenuItems() {
                 <TableCell>{item.name}</TableCell>
                 <TableCell>{item.quantity}</TableCell>
                 <TableCell>{item.unit}</TableCell>
-                <TableCell>{item.price.toFixed(2)}</TableCell>
+                <TableCell>${item.price.toFixed(2)}</TableCell>
                 <TableCell>
                   {categories.find(
                     (category) => category.id === item.categoryId

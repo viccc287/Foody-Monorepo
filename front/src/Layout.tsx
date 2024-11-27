@@ -8,6 +8,7 @@ import Stock from "@/pages/Stock";
 import Categories from "@/pages/Categories";
 import Suppliers from "@/pages/Suppliers";
 import Promos from "@/pages/Promos";
+import Orders from "@/pages/Orders";
 
 export default function Layout() {
   return (
@@ -15,7 +16,8 @@ export default function Layout() {
       <Router>
         <Toaster />
         <AppSidebar />
-        <main className="w-full p-4 overflow-auto">
+        <main className="w-full p-4 overflow-auto max-h-[100svh]">
+          <div className="flex flex-col grow h-full">
           <SidebarTrigger />
           <Routes>
             <Route
@@ -31,8 +33,11 @@ export default function Layout() {
             <Route path="/stock" element={<Stock />} />
             <Route path="/categories" element={<Categories />} />
             <Route path="/suppliers" element={<Suppliers />} />
-            <Route path="/promos" element={<Promos/>} />
+            <Route path="/promos" element={<Promos />} />
+            <Route path='/orders' element={<Orders />} />
           </Routes>
+          </div>
+          
         </main>
       </Router>
     </SidebarProvider>

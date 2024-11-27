@@ -1,9 +1,24 @@
 import db from "../../database/connection";
+import MenuItem from "../StockEntities/MenuItem";
+import Promo from "../PromoEntities/Promo";
 
 class OrderItem {
-    static tableName = "OrderItem";
+  static tableName = "OrderItem";
 
-    constructor({ id, menuItemId, orderId, promoId, quantity, subtotal, discountApplied, promoName, comments }) {
+    constructor({
+        id,
+        menuItemId,
+        orderId,
+        promoId,
+        quantity,
+        subtotal,
+        discountApplied,
+        total,
+        promoName,
+        comments,
+        quantityHistory = "[]",
+        appliedPromos = "[]",
+    }) {
         this.id = id || null;
         this.menuItemId = menuItemId;
         this.orderId = orderId;
@@ -11,76 +26,203 @@ class OrderItem {
         this.quantity = quantity;
         this.subtotal = subtotal;
         this.discountApplied = discountApplied || 0;
+        this.total = total || subtotal - this.discountApplied;
         this.promoName = promoName || null;
         this.comments = comments || null;
+        this.quantityHistory = JSON.parse(quantityHistory);
+        this.appliedPromos = JSON.parse(appliedPromos);
     }
 
-    static getAll() {
-        const stmt = db.prepare(`SELECT * FROM ${this.tableName}`);
-        const rows = stmt.all();
-        return rows.map((row) => new OrderItem(row));
-    }
+  static getAll() {
+    const stmt = db.prepare(`SELECT * FROM ${this.tableName}`);
+    const rows = stmt.all();
+    return rows.map((row) => new OrderItem(row));
+  }
 
-    static getByOrderId(orderId) {
-        const stmt = db.prepare(`SELECT * FROM ${this.tableName} WHERE orderId = ?`);
-        const rows = stmt.all(orderId);
-        return rows.map((row) => new OrderItem(row));
-    }
+  static getById(id) {
+    const stmt = db.prepare(`SELECT * FROM ${this.tableName} WHERE id = ?`);
+    const row = stmt.get(id);
+    return row ? new OrderItem(row) : null;
+  }
 
-    save() {
-        if (this.id) {
-            return this.#updateRecord();
-        } else {
-            this.id = this.#createRecord();
-            return this.id;
+  static getByOrderId(orderId) {
+    const stmt = db.prepare(
+      `SELECT * FROM ${this.tableName} WHERE orderId = ?`
+    );
+    const rows = stmt.all(orderId);
+    return rows.map((row) => new OrderItem(row));
+  }
+
+  async addQuantity(additionalQuantity, timestamp = new Date().toISOString()) {
+    // Add to history
+    this.quantityHistory.push({
+      quantity: additionalQuantity,
+      timestamp,
+    });
+
+    // Update total quantity
+    this.quantity += additionalQuantity;
+
+
+    // Recalculate base subtotal
+    const menuItem = await MenuItem.getById(this.menuItemId);
+    this.subtotal = menuItem.price * this.quantity;
+
+    // Get active promos
+    const promos = await Promo.getActiveByMenuItemId(this.menuItemId);
+
+    // Calculate new promotions
+    this.calculatePromotions(timestamp, promos);
+
+    // Update totals
+    this.updateTotals();
+
+    return this.save();
+  }
+
+  calculatePromotions(currentTimestamp, activePromos) {
+    // Sort quantity history by timestamp
+    const sortedHistory = [...this.quantityHistory].sort(
+      (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
+    );
+  
+    // Process each promo
+    activePromos.forEach((promo) => {
+      let eligibleQuantity = 0;
+  
+        // Calculate eligible quantity based on timestamps        
+      sortedHistory.forEach((entry) => {
+        if (promo.isValidAtTimestamp(entry.timestamp)) {
+          eligibleQuantity += 1;
         }
-    }
-
-    #createRecord() {
-        const stmt = db.prepare(
-            `INSERT INTO ${OrderItem.tableName} (menuItemId, orderId, promoId, quantity, subtotal, discountApplied, promoName, comments)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      });        
+        
+  
+      if (eligibleQuantity > 0) {
+        const discount = promo.calculateDiscount(
+          eligibleQuantity,
+          eligibleQuantity * this.getBasePrice(),
+          this.getBasePrice()
         );
-        const result = stmt.run(
-            this.menuItemId,
-            this.orderId,
-            this.promoId,
-            this.quantity,
-            this.subtotal,
-            this.discountApplied,
-            this.promoName,
-            this.comments
-        );
-        this.id = result.lastInsertRowid;
-        return this.id;
-    }
+  
+        if (discount > 0) {
+          // Record applied promo
+          this.appliedPromos.push({
+            promoId: promo.id,
+            promoName: promo.name,
+            quantity: eligibleQuantity,
+            discountApplied: discount,
+            timestamp: currentTimestamp,
+            type: promo.type,
+          });
+          }
+        else {
+            
+          }
+      }
+    });
+  }
 
-    #updateRecord() {
-        const stmt = db.prepare(
-            `UPDATE ${OrderItem.tableName}
-            SET menuItemId = ?, orderId = ?, promoId = ?, quantity = ?, subtotal = ?, discountApplied = ?, promoName = ?, comments = ?
+  getBasePrice() {
+    return MenuItem.getById(this.menuItemId).price;
+  }
+
+  updateTotals() {
+    console.log(this.appliedPromos);
+
+    // Calculate total discount from all applied promos
+    this.discountApplied = this.appliedPromos.at(-1)?.discountApplied || 0;
+    // Ensure discount doesn't exceed subtotal
+    this.discountApplied = Math.min(this.discountApplied, this.subtotal);
+
+    // Calculate final total
+    this.total = this.subtotal - this.discountApplied;
+  }
+
+  save() {
+    if (this.id) {
+      return this.#updateRecord();
+    } else {
+      const menuItem = MenuItem.getById(this.menuItemId);
+      // Calcula el subtotal si no está proporcionado
+      if (!this.subtotal) {
+        this.subtotal = menuItem.price * this.quantity;
+      }
+
+      // Recalcular el descuento si hay promociones activas
+      const activePromos = Promo.getActiveByMenuItemId(this.menuItemId);
+      if (activePromos.length > 0) {
+        this.discountApplied = activePromos.reduce((acc, promo) => {
+          return (
+            acc +
+            promo.calculateDiscount(
+              this.quantity,
+              this.subtotal,
+              menuItem.price
+            )
+          );
+        }, 0);
+        this.discountApplied = Math.min(this.discountApplied, this.subtotal);
+      } else {
+        this.discountApplied = 0;
+      }
+
+      // Calcular el total final
+      this.total = this.subtotal - this.discountApplied;
+
+      return this.#createRecord();
+    }
+  }
+
+  #createRecord() {
+    const stmt = db.prepare(
+      `INSERT INTO ${OrderItem.tableName} (menuItemId, orderId, promoId, quantity, subtotal, discountApplied, total, promoName, comments)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    );
+    const result = stmt.run(
+      this.menuItemId,
+      this.orderId,
+      this.promoId,
+      this.quantity,
+      this.subtotal,
+      this.discountApplied,
+      this.total,
+      this.promoName,
+      this.comments
+    );
+    this.id = result.lastInsertRowid;
+    return this.id;
+  }
+
+  #updateRecord() {
+    const stmt = db.prepare(
+      `UPDATE ${OrderItem.tableName}
+            SET menuItemId = ?, orderId = ?, promoId = ?, quantity = ?, subtotal = ?, discountApplied = ?, total = ?, promoName = ?, comments = ?, quantityHistory = ?, appliedPromos = ?
             WHERE id = ?`
-        );
-        const result = stmt.run(
-            this.menuItemId,
-            this.orderId,
-            this.promoId,
-            this.quantity,
-            this.subtotal,
-            this.discountApplied,
-            this.promoName,
-            this.comments,
-            this.id
-        );
-        return result.changes > 0;
-    }
+    );
+    const result = stmt.run(
+      this.menuItemId,
+      this.orderId,
+      this.promoId,
+      this.quantity,
+      this.subtotal,
+      this.discountApplied,
+      this.total,
+      this.promoName,
+      this.comments,
+      JSON.stringify(this.quantityHistory),
+      JSON.stringify(this.appliedPromos),
+      this.id
+    );
+    return result.changes > 0;
+  }
 
-    delete() {
-        if (!this.id) throw new Error("Cannot delete an unsaved OrderItem.");
-        const stmt = db.prepare(`DELETE FROM ${OrderItem.tableName} WHERE id = ?`);
-        const result = stmt.run(this.id);
-        return result.changes > 0;
-    }
+  delete() {
+    if (!this.id) throw new Error("Cannot delete an unsaved OrderItem.");
+    const stmt = db.prepare(`DELETE FROM ${OrderItem.tableName} WHERE id = ?`);
+    const result = stmt.run(this.id);
+    return result.changes > 0;
+  }
 }
 
 export default OrderItem;
