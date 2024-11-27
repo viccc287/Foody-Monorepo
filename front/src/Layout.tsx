@@ -10,7 +10,7 @@ import Suppliers from "@/pages/Suppliers";
 import Promos from "@/pages/Promos";
 import PrivateRoute from "@/components/PrivateRoute.tsx";
 import Login from "@/pages/Login.tsx";
-
+import Orders from "@/pages/Orders.tsx";
 
 function AppLayout() {
     const location = useLocation();
