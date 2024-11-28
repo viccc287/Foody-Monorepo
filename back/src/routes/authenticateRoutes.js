@@ -17,7 +17,7 @@ router.post("/", async (req, res) => {
         let agent = await Agent.authenticate(email, pin);
         if (!agent || agent.length === 0) {
             return res.status(404).json({
-                message: 'Invalid credentials.',
+                message: 'Credenciales inválidas',
             });
         }
         let payload = generateJwtPayload(agent.role, agent.email);
@@ -26,6 +26,8 @@ router.post("/", async (req, res) => {
             token: token
         });
     } catch (error) {
+        console.log(error);
+        
         res.status(500).json({error: error.message});
     }
 });

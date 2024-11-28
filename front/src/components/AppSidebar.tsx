@@ -26,7 +26,7 @@ import {
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
-import {Link, useNavigate} from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import {
   Tooltip,
@@ -48,51 +48,62 @@ const items = [
     title: "Dashboard",
     url: "/",
     icon: Home,
+    allowedRoles: ["*"],
   },
   {
     title: "Artículos del menú",
     url: "menu-items",
     icon: CupSoda,
+    allowedRoles: ["manager"],
   },
   {
     title: "Inventario/Insumos",
     url: "stock",
     icon: Boxes,
+    allowedRoles: ["manager"],
   },
   {
     title: "Agentes",
     url: "agents",
     icon: Users,
+    allowedRoles: ["manager"],
   },
   {
     title: "Categorías",
     url: "categories",
     icon: Shapes,
+    allowedRoles: ["manager"],
   },
   {
     title: "Proveedores",
     url: "suppliers",
     icon: Truck,
+    allowedRoles: ["manager"],
   },
   {
     title: "Promociones",
     url: "promos",
     icon: PercentCircle,
+    allowedRoles: ["manager"],
   },
   {
     title: "Órdenes",
     url: "orders",
     icon: ListTodo,
-  }
+    allowedRoles: ["manager", "cashier", "waiter"],
+  },
 ];
+
+const userInfo = tokenService.getUserInfo();
 
 export function AppSidebar() {
   const { open } = useSidebar();
   const navigate = useNavigate();
   const handleLogout = () => {
     tokenService.clearToken();
-    navigate('/login');
+    navigate("/login");
   };
+
 
   return (
     <TooltipProvider>
@@ -102,21 +113,24 @@ export function AppSidebar() {
             <SidebarGroupLabel>Restaurante</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {items.map((item) => (
-                  <Tooltip key={item.title}>
-                    <TooltipTrigger>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton asChild>
-                        <Link to={item.url}>
-                          <item.icon />
-                          <span>{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    </TooltipTrigger>
-                    <TooltipContent>{item.title}</TooltipContent>
-                  </Tooltip>
-                ))}
+                {items.map(
+                  (item) =>
+                    item.allowedRoles.includes(userInfo.role) && (
+                      <Tooltip key={item.title}>
+                        <TooltipTrigger>
+                          <SidebarMenuItem>
+                            <SidebarMenuButton asChild>
+                              <Link to={item.url}>
+                                <item.icon />
+                                <span>{item.title}</span>
+                              </Link>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        </TooltipTrigger>
+                        <TooltipContent>{item.title}</TooltipContent>
+                      </Tooltip>
+                    )
+                )}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -134,7 +148,7 @@ export function AppSidebar() {
                 <DropdownMenuTrigger asChild>
                   <SidebarMenuButton>
                     <User />
-                    <span>Agente</span>
+                    <span>{userInfo?.email}</span>
                     <ChevronUp className="ml-auto" />
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>

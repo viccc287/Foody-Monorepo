@@ -25,7 +25,7 @@ export default function LoginForm() {
             setStep('password')
             setError('')
         } else {
-            setError('Please enter a valid email address')
+            setError('Por favor, ingresa un correo electrónico válido')
         }
     }
 
@@ -33,18 +33,18 @@ export default function LoginForm() {
         e.preventDefault();
         if (password.length >= 4) {
             try {
-                let response = await login(email, password);
+                const response = await login(email, password);
                 if (response.token) {
                     tokenService.setToken(response.token);
                     navigate('/agents');
                 } else {
-                    setError('Invalid credentials');
+                    setError('Credenciales inválidas');
                 }
             } catch (error) {
                 setError(error.message);
             }
         } else {
-            setError('Password must be at least 4 characters long');
+            setError('La contraseña debe ser de al menos 4 caracteres');
         }
     }
 
@@ -60,7 +60,7 @@ export default function LoginForm() {
 
             if (!response.ok) {
                 const error = await response.json();
-                throw new Error(error.message || "Authentication failed");
+                throw new Error(error.message || "La autenticación falló");
             }
 
             const data = await response.json();
@@ -73,9 +73,9 @@ export default function LoginForm() {
     return (
         <Card className="w-[350px]">
             <CardHeader>
-                <CardTitle>Login</CardTitle>
+                <CardTitle>Bienvenido</CardTitle>
                 <CardDescription>
-                    {step === 'email' ? 'Enter your email to get started' : 'Enter your password to continue'}
+                    {step === 'email' ? 'Ingresa tu email' : 'Ingresa tu PIN'}
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -109,11 +109,11 @@ export default function LoginForm() {
                     <CardFooter className="flex justify-between mt-4 p-0">
                         {step === 'password' && (
                             <Button type="button" variant="outline" onClick={() => setStep('email')}>
-                                Back
+                                Volver
                             </Button>
                         )}
                         <Button type="submit" className="ml-auto">
-                            {step === 'email' ? 'Next' : 'Login'}
+                            {step === 'email' ? 'Siguiente' : 'Iniciar sesión'}
                         </Button>
                     </CardFooter>
                 </form>

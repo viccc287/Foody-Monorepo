@@ -37,6 +37,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import TokenService from "@/services/tokenService";
 
 const orderSchema = z.object({
   customer: z.string().trim().min(1, "Customer name is required"),
@@ -66,6 +67,9 @@ const exampleAgent = {
 };
 
 export default function OrdersPage() {
+  
+  console.log(TokenService.getUserInfo()?.role);
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -269,7 +273,7 @@ export default function OrdersPage() {
 
   const getMenuItemsByCategory = useCallback(
     (categoryId: number) => {
-      return menuItems.filter(item => item.categoryId === categoryId);
+      return menuItems.filter((item) => item.categoryId === categoryId);
     },
     [menuItems]
   );
@@ -518,28 +522,37 @@ export default function OrdersPage() {
               </div>
             </ScrollArea>
             <div className="border-t bg-muted/30 p-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <div className="flex items-center gap-4">
-                  <span className="text-sm text-muted-foreground">Subtotal:</span>
-                    <span className="font-medium">${selectedOrder.subtotal?.toFixed(2)}</span>
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm text-muted-foreground">
+                      Subtotal:
+                    </span>
+                    <span className="font-medium">
+                      ${selectedOrder.subtotal?.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm text-muted-foreground">
+                      Descuentos:
+                    </span>
+                    <span className="font-medium text-green-600">
+                      -${selectedOrder.discountTotal?.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm font-medium">Total Final:</span>
+                    <span className="text-xl font-bold">
+                      ${selectedOrder.total?.toFixed(2)}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-sm text-muted-foreground">Descuentos:</span>
-                  <span className="font-medium text-green-600">-${selectedOrder.discountTotal?.toFixed(2)}</span>
+                <div className="flex gap-2">
+                  <Button variant="outline">Cancelar</Button>
+                  <Button>Cobrar</Button>
                 </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-sm font-medium">Total Final:</span>
-                  <span className="text-xl font-bold">${selectedOrder.total?.toFixed(2)}</span>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline">Cancelar</Button>
-                <Button>Cobrar</Button>
               </div>
             </div>
-          </div>
-  
           </>
         ) : (
           <div className="flex h-full items-center justify-center">
