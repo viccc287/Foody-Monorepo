@@ -4,13 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -33,7 +26,14 @@ import {
 } from "@/components/ui/form";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
-import { MenuItem, Order, NewOrder, OrderItem, NewOrderItem } from "@/types";
+import {
+  MenuItem,
+  Order,
+  NewOrder,
+  OrderItem,
+  NewOrderItem,
+  Category,
+} from "@/types";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +50,7 @@ const tipSchema = z.object({
 const ORDER_BASE_FETCH_URL = "http://localhost:3000/orders";
 const ORDER_ITEM_FETCH_URL = "http://localhost:3000/order-items";
 const MENUITEM_FETCH_URL = "http://localhost:3000/menu/menu-items";
+const CATEGORIES_FETCH_URL = "http://localhost:3000/categories?type=menu";
 
 const exampleAgent = {
   name: "Carlos",
@@ -67,6 +68,10 @@ const exampleAgent = {
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(
+    null
+  );
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
@@ -99,15 +104,18 @@ export default function OrdersPage() {
 
   useEffect(() => {
     const loadData = async () => {
-      const [ordersData, menuItemsData] = await Promise.all([
+      const [ordersData, menuItemsData, categoriesData] = await Promise.all([
         fetch(`${ORDER_BASE_FETCH_URL}/active`).then((res) => res.json()),
         fetch(MENUITEM_FETCH_URL).then((res) => res.json()),
+        fetch(CATEGORIES_FETCH_URL).then((res) => res.json()),
       ]);
       console.log("ordersData", ordersData);
       console.log("menuItemsData", menuItemsData);
+      console.log("categoriesData", categoriesData);
 
       setOrders(ordersData);
       setMenuItems(menuItemsData);
+      setCategories(categoriesData);
       setLoading(false);
     };
     loadData();
@@ -134,6 +142,9 @@ export default function OrdersPage() {
 
     const timestamp = new Date().toISOString();
 
+    let newOrderItem: OrderItem;
+    let updatedOrder: Order;
+
     if (existingItem) {
       const response = await fetch(
         `${ORDER_ITEM_FETCH_URL}/${existingItem.id}/quantity`,
@@ -151,6 +162,14 @@ export default function OrdersPage() {
         console.error("Failed to update order item");
         return;
       }
+
+      newOrderItem = await response.json();
+      updatedOrder = {
+        ...selectedOrder,
+        orderItems: selectedOrder.orderItems.map((item) =>
+          item.id === newOrderItem.id ? newOrderItem : item
+        ),
+      };
     } else {
       // Create new item
       const newItem: NewOrderItem = {
@@ -170,7 +189,15 @@ export default function OrdersPage() {
         console.error("Failed to create order item");
         return;
       }
+
+      newOrderItem = await response.json();
+      updatedOrder = {
+        ...selectedOrder,
+        orderItems: [...selectedOrder.orderItems, newOrderItem],
+      };
     }
+
+    setSelectedOrder(updatedOrder);
   };
 
   const chargeOrder = async () => {
@@ -225,24 +252,27 @@ export default function OrdersPage() {
   }
 
   const onTipSubmit = (values: z.infer<typeof tipSchema>) => {
-
     console.log("values", values);
-    
+
     // Handle tip submission here
-    const tipAmount = values.tipType === "custom" 
-      ? parseFloat(values.customAmount || "0")
-      : (parseFloat(values.tipType) / 100) * selectedOrder.total
-    
+    const tipAmount =
+      values.tipType === "custom"
+        ? parseFloat(values.customAmount || "0")
+        : (parseFloat(values.tipType) / 100) * selectedOrder.total;
+
     console.log("tipAmount", tipAmount);
-    
 
     setTipDialogOpen(false);
 
-    
     tipForm.reset();
+  };
 
-
-  }
+  const getMenuItemsByCategory = useCallback(
+    (categoryId: number) => {
+      return menuItems.filter(item => item.categoryId === categoryId);
+    },
+    [menuItems]
+  );
 
   return (
     <div className="flex h-full">
@@ -255,7 +285,10 @@ export default function OrdersPage() {
             </DialogDescription>
           </DialogHeader>
           <Form {...orderForm}>
-            <form onSubmit={orderForm.handleSubmit(onOrderSubmit)} className="space-y-4">
+            <form
+              onSubmit={orderForm.handleSubmit(onOrderSubmit)}
+              className="space-y-4"
+            >
               <FormField
                 control={orderForm.control}
                 name="customer"
@@ -306,7 +339,10 @@ export default function OrdersPage() {
                 Orden de {selectedOrder.customer}
               </h1>
               <div className="flex ml-auto gap-2">
-                <Dialog open={addItemDialogOpen} onOpenChange={setAddItemDialogOpen}>
+                <Dialog
+                  open={addItemDialogOpen}
+                  onOpenChange={setAddItemDialogOpen}
+                >
                   <DialogTrigger asChild>
                     <Button>
                       <PlusCircle className="mr-2 h-4 w-4" />
@@ -481,37 +517,29 @@ export default function OrdersPage() {
                 ))}
               </div>
             </ScrollArea>
-            <div className="h-fit bg-card border rounded-lg p-6 shadow-sm">
-              <div className="grid grid-cols-3 gap-8 mb-6">
-                <div className="text-center">
-                  <p className="text-sm text-muted-foreground mb-2">Subtotal</p>
-                  <p className="text-lg font-medium">
-                    ${selectedOrder.subtotal.toFixed(2)}
-                  </p>
+            <div className="border-t bg-muted/30 p-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm text-muted-foreground">Subtotal:</span>
+                    <span className="font-medium">${selectedOrder.subtotal?.toFixed(2)}</span>
                 </div>
-
-                <div className="text-center border-x">
-                  <p className="text-sm text-green-600 mb-2">Descuentos</p>
-                  <p className="text-lg font-medium text-green-600">
-                    -${selectedOrder.discountTotal.toFixed(2)}
-                  </p>
+                <div className="flex items-center gap-4">
+                  <span className="text-sm text-muted-foreground">Descuentos:</span>
+                  <span className="font-medium text-green-600">-${selectedOrder.discountTotal?.toFixed(2)}</span>
                 </div>
-
-                <div className="text-center">
-                  <p className="text-sm font-medium mb-2">Total Final</p>
-                  <p className="text-2xl font-bold text-primary">
-                    ${selectedOrder.total.toFixed(2)}
-                  </p>
+                <div className="flex items-center gap-4">
+                  <span className="text-sm font-medium">Total Final:</span>
+                  <span className="text-xl font-bold">${selectedOrder.total?.toFixed(2)}</span>
                 </div>
               </div>
-
-              <div className="flex justify-end gap-4">
-                <Button variant="outline" className="w-32">
-                  Cancelar
-                </Button>
-                <Button className="w-32">Cobrar</Button>
+              <div className="flex gap-2">
+                <Button variant="outline">Cancelar</Button>
+                <Button>Cobrar</Button>
               </div>
             </div>
+          </div>
+  
           </>
         ) : (
           <div className="flex h-full items-center justify-center">
@@ -520,6 +548,60 @@ export default function OrdersPage() {
             </p>
           </div>
         )}
+      </div>
+
+      {/* Right Sidebar */}
+      <div className="flex flex-col w-96 border-l p-4 h-full">
+        <div className="flex flex-col mb-4 gap-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">
+              {selectedCategory ? selectedCategory.name : "Categorías"}
+            </h2>
+            {selectedCategory && (
+              <Button variant="ghost" onClick={() => setSelectedCategory(null)}>
+                Volver
+              </Button>
+            )}
+          </div>
+        </div>
+        <ScrollArea className="h-[calc(100vh-8rem)] mt-4">
+          <div className="grid gap-4">
+            {!selectedCategory
+              ? // Show categories
+                categories.map((category) => (
+                  <Card
+                    key={category.id}
+                    className="cursor-pointer hover:bg-accent"
+                    onClick={() => setSelectedCategory(category)}
+                  >
+                    <CardHeader className="p-4">
+                      <CardTitle className="text-sm">{category.name}</CardTitle>
+                    </CardHeader>
+                  </Card>
+                ))
+              : // Show menu items for selected category
+                getMenuItemsByCategory(selectedCategory.id).map((item) => (
+                  <Card key={item.id}>
+                    <CardHeader className="p-4">
+                      <CardTitle className="text-sm">{item.name}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                      <p className="text-sm text-muted-foreground">
+                        ${item.price}
+                      </p>
+                      <Button
+                        size="sm"
+                        className="mt-2"
+                        onClick={() => addItemToOrder(item)}
+                        disabled={!selectedOrder}
+                      >
+                        Agregar
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+          </div>
+        </ScrollArea>
       </div>
     </div>
   );
