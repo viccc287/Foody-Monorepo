@@ -17,6 +17,7 @@ import Promos from "@/pages/Promos";
 import Login from "@/pages/Login";
 import Orders from "@/pages/Orders";
 import TokenService from "./services/tokenService";
+import History from "./pages/History";
 
 const ROUTE_ROLES = {
   "/menu-items": ["manager"],
@@ -25,6 +26,7 @@ const ROUTE_ROLES = {
   "/categories": ["manager"],
   "/suppliers": ["manager"],
   "/promos": ["manager"],
+  "/history": ["manager", "cashier"],
   "/orders": ["manager", "cashier", "waiter", "cook"],
 };
 
@@ -124,6 +126,14 @@ function AppLayout() {
                       element={
                         <RoleBasedRoute path="/orders">
                           <Orders />
+                        </RoleBasedRoute>
+                      }
+                    />
+                    <Route
+                      path="/history"
+                      element={
+                        <RoleBasedRoute path="/history">
+                          <History />
                         </RoleBasedRoute>
                       }
                     />

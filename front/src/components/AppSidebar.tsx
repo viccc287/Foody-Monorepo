@@ -3,6 +3,7 @@ import {
   ChevronUp,
   CupSoda,
   Handshake,
+  History,
   Home,
   List,
   ListTodo,
@@ -43,6 +44,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import tokenService from "@/services/tokenService.ts";
 import { useEffect, useState } from "react";
+
+import logoUrl from "@/assets/yuru.jpg";
 
 const items = [
   {
@@ -93,6 +96,12 @@ const items = [
     icon: ListTodo,
     allowedRoles: ["manager", "cashier", "waiter"],
   },
+  {
+    title: "Histórico",
+    url: "history",
+    icon: History,
+    allowedRoles: ["manager", "cashier"],
+  }
 ];
 
 export function AppSidebar() {
@@ -115,7 +124,9 @@ export function AppSidebar() {
     <TooltipProvider>
       <Sidebar collapsible="icon">
         <SidebarContent>
+     
           <SidebarGroup>
+            
             <SidebarGroupLabel>Restaurante</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
@@ -133,7 +144,9 @@ export function AppSidebar() {
                             </SidebarMenuButton>
                           </SidebarMenuItem>
                         </TooltipTrigger>
-                        <TooltipContent side="right">{item.title}</TooltipContent>
+                        <TooltipContent side="right">
+                          {item.title}
+                        </TooltipContent>
                       </Tooltip>
                     )
                 )}
@@ -144,8 +157,8 @@ export function AppSidebar() {
         <SidebarFooter>
           {open && (
             <img
-              className="aspect-square"
-              src="https://static.vecteezy.com/system/resources/previews/014/971/638/non_2x/food-logo-design-template-restaurant-free-png.png"
+              className="aspect-square p-4 rounded-[25px] size-36"
+              src={logoUrl}
             />
           )}
           <SidebarMenu>
@@ -154,7 +167,9 @@ export function AppSidebar() {
                 <DropdownMenuTrigger asChild>
                   <SidebarMenuButton>
                     <User />
-                    <span>{userInfo?.name} { userInfo?.lastName}</span>
+                    <span>
+                      {userInfo?.name} {userInfo?.lastName}
+                    </span>
                     <ChevronUp className="ml-auto" />
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>

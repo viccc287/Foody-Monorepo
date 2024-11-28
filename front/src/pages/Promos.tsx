@@ -177,7 +177,6 @@ const fetchPromos = async (): Promise<Promo[]> => {
     promo.endDate = new Date(promo.endDate);
   });
 
-  console.log("Datos de promociones con fecha convertida:", data);
 
   return data;
 };
@@ -214,7 +213,6 @@ const createPromo = async (values: FormValues): Promise<Promo> => {
 
 const savePromo = async (promo: Promo): Promise<Promo> => {
   try {
-    console.log("Datos enviados en savePromo:", JSON.stringify(promo, null, 2));
 
     const response = await fetch(
       `${BASE_FETCH_URL}/promos-with-availability/${promo.id}`,
@@ -232,7 +230,6 @@ const savePromo = async (promo: Promo): Promise<Promo> => {
     }
 
     const data = await response.json();
-    console.log("Promoción actualizada:", data);
 
     return { ...promo, id: data.id };
   } catch (error) {

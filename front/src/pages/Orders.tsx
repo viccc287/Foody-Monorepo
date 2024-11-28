@@ -27,7 +27,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Form,
   FormControl,
@@ -81,6 +88,11 @@ const MENUITEM_FETCH_URL = "http://localhost:3000/menu/menu-items";
 const CATEGORIES_FETCH_URL = "http://localhost:3000/categories?type=menu";
 const AGENTS_FETCH_URL = "http://localhost:3000/agents/names";
 
+const MXN = new Intl.NumberFormat("es-MX", {
+  style: "currency",
+  currency: "MXN",
+});
+
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -98,6 +110,8 @@ export default function OrdersPage() {
   const [agentNames, setAgentNames] = useState([]);
   const [commentDialogOpen, setCommentDialogOpen] = useState(false);
   const [itemToAdd, setItemToAdd] = useState<MenuItem | null>(null);
+
+  const [ticketDialogOpen, setTicketDialogOpen] = useState(false);
 
   const [userInfo, setUserInfo] = useState(TokenService.getUserInfo());
 
@@ -204,8 +218,6 @@ export default function OrdersPage() {
       "success"
     );
 
-    console.log("menuItem", menuItem);
-
     // Find if item already exists in order
     const existingItem = selectedOrder.orderItems?.find(
       (item) => item.menuItemId === menuItem.id
@@ -244,8 +256,6 @@ export default function OrdersPage() {
   ) => {
     if (!selectedOrder) return;
     if (orderItem.quantity + quantity < 0) return;
-    ;
-
     const timestamp = new Date().toISOString();
 
     const response = await fetch(
@@ -277,8 +287,7 @@ export default function OrdersPage() {
         );
 
         alert(data.error, errorList, "error");
-      }
-      else console.error("Failed to update order item");
+      } else console.error("Failed to update order item");
       return;
     }
 
@@ -294,6 +303,8 @@ export default function OrdersPage() {
     console.log("userInfo", userInfo);
 
     if (!selectedOrder) return;
+
+    setTicketDialogOpen(true);
 
     const response = await fetch(
       `${ORDER_BASE_FETCH_URL}/${selectedOrder.id}/charge`,
@@ -330,10 +341,13 @@ export default function OrdersPage() {
       return;
     }
 
-    alert("Eliminado", "El artículo ha sido eliminado de la orden, el inventario ha sido reestablecido", "success");
+    alert(
+      "Eliminado",
+      "El artículo ha sido eliminado de la orden, el inventario ha sido reestablecido",
+      "success"
+    );
 
     const orderData = await response.json();
-
 
     const updatedOrder = {
       ...orderData,
@@ -341,7 +355,6 @@ export default function OrdersPage() {
         (item) => item.id !== orderItem.id
       ),
     };
-
 
     setSelectedOrder(updatedOrder);
   };
@@ -379,7 +392,6 @@ export default function OrdersPage() {
       if (!response.ok) throw new Error("Failed to create order");
 
       const newOrder = await response.json();
-      console.log("newOrder", newOrder);
 
       setOrders([...orders, newOrder]);
 
@@ -397,14 +409,17 @@ export default function OrdersPage() {
         ? parseFloat(values.customAmount || 0)
         : (parseFloat(values.tipType) / 100) * selectedOrder.total;
 
-    try{
-      const response = await fetch(`${ORDER_BASE_FETCH_URL}/${selectedOrder?.id}/tip`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tip: tipAmount,
-        }),
-      });
+    try {
+      const response = await fetch(
+        `${ORDER_BASE_FETCH_URL}/${selectedOrder?.id}/tip`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tip: tipAmount,
+          }),
+        }
+      );
 
       if (!response.ok) {
         console.error("Failed to update tip");
@@ -415,7 +430,7 @@ export default function OrdersPage() {
 
       setSelectedOrder(data.order);
     } catch (error) {
-      console.error("Error updating tip:", error)
+      console.error("Error updating tip:", error);
     }
 
     setTipDialogOpen(false);
@@ -426,7 +441,6 @@ export default function OrdersPage() {
   const onCommentSubmit = async (values: z.infer<typeof commentSchema>) => {
     if (!itemToAdd) return;
 
-    console.log(values);
     await addItemToOrder(itemToAdd, values.comments);
     setCommentDialogOpen(false);
     commentForm.reset();
@@ -442,6 +456,78 @@ export default function OrdersPage() {
 
   return (
     <div className="flex h-full">
+      <Dialog open={ticketDialogOpen} onOpenChange={setTicketDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Ticket de Venta</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="text-center border-b pb-4">
+              <h3 className="font-bold">LA YURU</h3>
+              <p className="text-sm text-muted-foreground">
+                {new Date().toLocaleString()}
+              </p>
+              <p className="text-sm">Cliente: {selectedOrder?.customer}</p>
+              <p className="text-sm">
+                Atendido por: {findAgentFullName(selectedOrder?.claimedById)}
+              </p>
+              <p className="text-sm">
+                Cobrado por: {findAgentFullName(userInfo?.id)}
+              </p>
+            </div>
+
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableCell>Cant.</TableCell>
+                  <TableCell>Artículo</TableCell>
+                  <TableCell className="text-right">Total</TableCell>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {selectedOrder?.orderItems?.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>{item.quantity}</TableCell>
+                    <TableCell>{findMenuItem(item.menuItemId)?.name}</TableCell>
+                    <TableCell className="text-right">
+                      {MXN.format(item.total)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+              <TableFooter>
+                <TableRow>
+                  <TableCell colSpan={2}>Subtotal</TableCell>
+                  <TableCell className="text-right">
+                    {MXN.format(selectedOrder?.subtotal)}
+                  </TableCell>
+                </TableRow>
+                {selectedOrder?.discountTotal > 0 && (
+                  <TableRow>
+                    <TableCell colSpan={2}>Descuentos</TableCell>
+                    <TableCell className="text-right">
+                      {MXN.format(selectedOrder?.discountTotal)}
+                    </TableCell>
+                  </TableRow>
+                )}
+
+                <TableRow>
+                  <TableCell colSpan={2}>Total</TableCell>
+                  <TableCell className="text-right">
+                    {MXN.format(selectedOrder?.total)}
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell colSpan={2}>Propina</TableCell>
+                  <TableCell className="text-right">
+                    {MXN.format(selectedOrder?.tip)}
+                  </TableCell>
+                </TableRow>
+              </TableFooter>
+            </Table>
+          </div>
+        </DialogContent>
+      </Dialog>
       <Dialog open={orderDialogOpen} onOpenChange={setOrderDialogOpen}>
         <DialogContent>
           <DialogHeader>
