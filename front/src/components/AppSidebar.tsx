@@ -49,7 +49,7 @@ const items = [
     title: "Dashboard",
     url: "/",
     icon: Home,
-    allowedRoles: ["*"],
+    allowedRoles: ["manager", "cashier", "waiter", "cook"],
   },
   {
     title: "Artículos del menú",

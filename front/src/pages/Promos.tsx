@@ -1,5 +1,15 @@
 import SortableTableHeadSet from "@/components/SortableTableHeadSet";
-import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -232,9 +242,12 @@ const savePromo = async (promo: Promo): Promise<Promo> => {
 };
 
 const deletePromo = async (id: number): Promise<void> => {
-  const response = await fetch(`${BASE_FETCH_URL}/promos-with-availability/${id}`, {
-    method: "DELETE",
-  });
+  const response = await fetch(
+    `${BASE_FETCH_URL}/promos-with-availability/${id}`,
+    {
+      method: "DELETE",
+    }
+  );
   if (!response.ok) throw new Error("Error al eliminar la promoción");
 };
 
@@ -917,7 +930,7 @@ export default function Promos() {
                         <li key={day}>
                           {
                             daysTranslations[
-                            day as keyof typeof daysTranslations
+                              day as keyof typeof daysTranslations
                             ]
                           }
                           : {startTime} - {endTime}
@@ -942,13 +955,17 @@ export default function Promos() {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Confirmar eliminación</AlertDialogTitle>
+                          <AlertDialogTitle>
+                            Confirmar eliminación
+                          </AlertDialogTitle>
                           <AlertDialogDescription>
-                            ¿Realmente desea eliminar esta promoción? Esta acción no se puede deshacer.
+                            ¿Realmente desea eliminar esta promoción? Esta
+                            acción no se puede deshacer.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <Button variant="outline">Cancelar</Button>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+
                           <Button
                             variant="destructive"
                             onClick={() => handleDelete(promo.id)}
@@ -958,7 +975,6 @@ export default function Promos() {
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
-
                   </div>
                 </TableCell>
               </TableRow>

@@ -46,6 +46,14 @@ class Order {
     return rows.map((row) => new Order(row));
   }
 
+  static getActiveByClaimedId(claimedById) {
+    const stmt = db.prepare(
+      `SELECT * FROM ${this.tableName} WHERE claimedById = ? AND status = 'active'`
+    );
+    const rows = stmt.all(claimedById);
+    return rows.map((row) => new Order(row));
+  }
+
   static getById(id) {
     const stmt = db.prepare(`SELECT * FROM ${this.tableName} WHERE id = ?`);
     const row = stmt.get(id);

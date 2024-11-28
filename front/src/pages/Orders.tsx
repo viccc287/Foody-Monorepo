@@ -1,11 +1,23 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Edit2, MinusCircle, PlusCircle, Trash2 } from "lucide-react";
+import {
+  Edit2,
+  MinusCircle,
+  PlusCircle,
+  RefreshCcw,
+  Trash2,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { set, useForm } from "react-hook-form";
 import * as z from "zod";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
@@ -53,15 +65,23 @@ const tipSchema = z.object({
     .optional(),
 });
 
+const commentSchema = z.object({
+  comments: z.string(),
+});
+
+const adminRoles = ["manager", "cashier"];
+
 const ORDER_BASE_FETCH_URL = "http://localhost:3000/orders";
+
+const ORDER_WAITER_FETCH_URL =
+  "http://localhost:3000/orders/active-orders-by-agent";
+
 const ORDER_ITEM_FETCH_URL = "http://localhost:3000/order-items";
 const MENUITEM_FETCH_URL = "http://localhost:3000/menu/menu-items";
 const CATEGORIES_FETCH_URL = "http://localhost:3000/categories?type=menu";
-
-
+const AGENTS_FETCH_URL = "http://localhost:3000/agents/names";
 
 export default function OrdersPage() {
-
   const [orders, setOrders] = useState<Order[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -74,6 +94,12 @@ export default function OrdersPage() {
   const [tipDialogOpen, setTipDialogOpen] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<OrderItem | null>(null);
+  const [isElevatedUser, setIsElevatedUser] = useState(false);
+  const [agentNames, setAgentNames] = useState([]);
+  const [commentDialogOpen, setCommentDialogOpen] = useState(false);
+  const [itemToAdd, setItemToAdd] = useState<MenuItem | null>(null);
+
+  const [userInfo, setUserInfo] = useState(TokenService.getUserInfo());
 
   const { toast } = useToast();
 
@@ -99,22 +125,68 @@ export default function OrdersPage() {
     },
   });
 
+  const commentForm = useForm<z.infer<typeof commentSchema>>({
+    resolver: zodResolver(commentSchema),
+    defaultValues: {
+      comments: "",
+    },
+  });
+  // Effect for user info and role check
+  useEffect(() => {
+    const updatedUserInfo = TokenService.getUserInfo();
+    setUserInfo(updatedUserInfo);
+    setIsElevatedUser(adminRoles.includes(updatedUserInfo?.role));
+  }, []);
+
+  const fetchOrders = async () => {
+    try {
+      if (!userInfo) return;
+
+      const url = isElevatedUser
+        ? `${ORDER_BASE_FETCH_URL}/active`
+        : `${ORDER_WAITER_FETCH_URL}/${userInfo.id}`;
+
+      const ordersData = await fetch(url).then((res) => res.json());
+      setOrders(ordersData);
+
+      if (selectedOrder) {
+        const updatedOrder = ordersData.find(
+          (order) => order.id === selectedOrder.id
+        );
+        setSelectedOrder(updatedOrder);
+      }
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+      // Consider adding error state and UI feedback
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders();
+  }, [userInfo, isElevatedUser]);
+
+  // Effect for loading initial data
   useEffect(() => {
     const loadData = async () => {
-      const [ordersData, menuItemsData, categoriesData] = await Promise.all([
-        fetch(`${ORDER_BASE_FETCH_URL}/active`).then((res) => res.json()),
-        fetch(MENUITEM_FETCH_URL).then((res) => res.json()),
-        fetch(CATEGORIES_FETCH_URL).then((res) => res.json()),
-      ]);
-      console.log("ordersData", ordersData);
-      console.log("menuItemsData", menuItemsData);
-      console.log("categoriesData", categoriesData);
+      try {
+        const [menuItemsData, categoriesData, agentNamesData] =
+          await Promise.all([
+            fetch(MENUITEM_FETCH_URL).then((res) => res.json()),
+            fetch(CATEGORIES_FETCH_URL).then((res) => res.json()),
+            fetch(AGENTS_FETCH_URL).then((res) => res.json()),
+          ]);
 
-      setOrders(ordersData);
-      setMenuItems(menuItemsData);
-      setCategories(categoriesData);
-      setLoading(false);
+        setMenuItems(menuItemsData);
+        setCategories(categoriesData);
+        setAgentNames(agentNamesData);
+      } catch (error) {
+        console.error("Error loading data:", error);
+        // Consider adding error state and UI feedback
+      } finally {
+        setLoading(false);
+      }
     };
+
     loadData();
   }, []);
 
@@ -123,7 +195,7 @@ export default function OrdersPage() {
     [menuItems]
   );
 
-  const addItemToOrder = async (menuItem: MenuItem) => {
+  const addItemToOrder = async (menuItem: MenuItem, comments = null) => {
     if (!selectedOrder) return;
 
     alert(
@@ -139,17 +211,14 @@ export default function OrdersPage() {
       (item) => item.menuItemId === menuItem.id
     );
 
-    let newOrderItem: OrderItem;
-    let updatedOrder: Order;
-
     if (existingItem) {
-      return updateItemQuantityOfOrder(existingItem, 1);
+      return updateItemQuantityOfOrder(existingItem, 1, comments);
     } else {
       const newItem: NewOrderItem = {
         menuItemId: menuItem.id,
         orderId: selectedOrder.id,
         quantity: 1,
-        comments: null,
+        comments,
       };
 
       const response = await fetch(ORDER_ITEM_FETCH_URL, {
@@ -166,12 +235,12 @@ export default function OrdersPage() {
       const data = await response.json();
       setSelectedOrder(data.order);
     }
-
   };
 
   const updateItemQuantityOfOrder = async (
     orderItem: OrderItem,
-    quantity: number
+    quantity: number,
+    comments: string | null = null
   ) => {
     if (!selectedOrder) return;
 
@@ -185,17 +254,33 @@ export default function OrdersPage() {
         body: JSON.stringify({
           quantity,
           timestamp,
+          comments,
         }),
       }
     );
 
     if (!response.ok) {
-      console.error("Failed to update order item");
+      const data = await response.json();
+
+      if (data.error && data.notEnoughStock) {
+        const errorList = (
+          <ul>
+            {data.notEnoughStock.map((stockItem: any) => (
+              <li key={stockItem.name}>
+                {stockItem.name} - {stockItem.stock.toFixed(2)} {stockItem.unit}{" "}
+                disponibles, {stockItem.required.toFixed(2)} necesarios
+              </li>
+            ))}
+          </ul>
+        );
+
+        alert(data.error, errorList, "error");
+      }
+      else console.error("Failed to update order item");
       return;
     }
 
     const data = await response.json();
-
 
     setSelectedOrder(data.order);
 
@@ -204,6 +289,7 @@ export default function OrdersPage() {
 
   const chargeOrder = async () => {
     console.log("chargingOrder", selectedOrder);
+    console.log("userInfo", userInfo);
 
     if (!selectedOrder) return;
 
@@ -214,7 +300,7 @@ export default function OrdersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           status: "paid",
-          billedById: exampleAgent.id,
+          billedById: userInfo?.id,
         }),
       }
     );
@@ -224,15 +310,8 @@ export default function OrdersPage() {
       return;
     }
 
-    const updatedOrder = await response.json();
+    setOrders(orders.filter((order) => order.id !== selectedOrder.id));
 
-    console.log("updatedChargedOrder", updatedOrder);
-
-    setOrders(
-      orders.map((order) =>
-        order.id === updatedOrder.id ? updatedOrder : order
-      )
-    );
     setSelectedOrder(null);
   };
 
@@ -278,12 +357,21 @@ export default function OrdersPage() {
     setItemToDelete(null);
   };
 
+  const findAgentFullName = (id: string | null) => {
+    if (!id) return "Desconocido";
+    const agent = agentNames.find((agent) => agent.id === id);
+    return agent ? `${agent.name} ${agent.lastName}` : "Desconocido";
+  };
+
   async function onOrderSubmit(data: NewOrder) {
     try {
       const response = await fetch(ORDER_BASE_FETCH_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          claimedById: userInfo.id,
+        }),
       });
 
       if (!response.ok) throw new Error("Failed to create order");
@@ -306,12 +394,24 @@ export default function OrdersPage() {
     // Handle tip submission here
     const tipAmount =
       values.tipType === "custom"
-        ? parseFloat(values.customAmount || "0")
+        ? parseFloat(values.customAmount || 0)
         : (parseFloat(values.tipType) / 100) * selectedOrder.total;
+
+    console.log("tipAmount", tipAmount);
 
     setTipDialogOpen(false);
 
     tipForm.reset();
+  };
+
+  const onCommentSubmit = async (values: z.infer<typeof commentSchema>) => {
+    if (!itemToAdd) return;
+
+    console.log(values);
+    await addItemToOrder(itemToAdd, values.comments);
+    setCommentDialogOpen(false);
+    commentForm.reset();
+    setItemToAdd(null);
   };
 
   const getMenuItemsByCategory = useCallback(
@@ -355,11 +455,15 @@ export default function OrdersPage() {
       </Dialog>
       {/* Left Sidebar */}
       <div className="flex flex-col w-64 border-r p-4 h-full">
-        <div className="flex flex-col  mb-4 gap-4 ">
+        <div className="flex flex-col mb-4 gap-4 ">
           <h2 className="text-xl font-semibold">Mesas</h2>
           <Button onClick={() => setOrderDialogOpen(true)}>
             <PlusCircle className="mr-2 h-4 w-4" />
             Crear orden
+          </Button>
+          <Button onClick={fetchOrders} variant="outline">
+            <RefreshCcw className="mr-2 h-4 w-4" />
+            Refrescar
           </Button>
         </div>
         <ScrollArea className="grow">
@@ -388,8 +492,8 @@ export default function OrdersPage() {
               <h1 className="text-2xl font-bold">
                 Orden de {selectedOrder.customer}
               </h1>
-              <Badge className="text-xs" variant='outline'>
-                {selectedOrder.claimedById}
+              <Badge className="text-xs" variant="outline">
+                {findAgentFullName(selectedOrder.claimedById)}
               </Badge>
               <div className="flex ml-auto gap-2"></div>
             </div>
@@ -397,58 +501,70 @@ export default function OrdersPage() {
               <div className="grid grid-cols-[repeat(auto-fit,minmax(350px,1fr))] gap-4 grow">
                 {selectedOrder.orderItems?.map((item) => (
                   <Card key={item.id}>
-                    <CardContent className="p-4 flex justify-between items-center">
+                    <CardContent className="p-4 gap-2 flex justify-between items-center">
                       <div>
                         <div className="flex items-center gap-2">
-                          <p className="font-medium">
+                          <span className="font-medium">
                             {findMenuItem(item.menuItemId)?.name ||
                               "Artículo eliminado"}
-                          </p>
+                          </span>
                           {item.appliedPromos.length > 0 ? (
                             <Badge className="text-xs bg-green-600">
                               Promo
                             </Badge>
                           ) : null}
-                          <p className="text-xs text-green-600">
+                          <span className="text-xs text-green-600">
                             {item.discountApplied
                               ? `-$${item.discountApplied.toFixed(2)}`
                               : null}
-                          </p>
+                          </span>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <span>
                             ${findMenuItem(item.menuItemId)?.price.toFixed(2)}{" "}
                             c/u
                           </span>
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            className="h-6 w-6"
-                            onClick={() => handleDeleteItem(item)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {isElevatedUser && (
+                            <Button
+                              size="icon"
+                              variant="outline"
+                              className="h-6 w-6"
+                              onClick={() => handleDeleteItem(item)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
+                        <span className="text-xs text-muted-foreground">
+                          {item.comments ? "-" + item.comments : null}
+                        </span>
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="flex justify-center flex-col">
-                          <p className="text-xs line-throug text-muted-foreground">
-                            ${item.subtotal?.toFixed(2)}
-                          </p>
+                          {item.discountApplied !== null &&
+                            item.discountApplied > 0 && (
+                              <span className="text-xs line-through text-muted-foreground">
+                                ${item.subtotal?.toFixed(2)}
+                              </span>
+                            )}
 
-                          <p className="font-semibold">
+                          <span className="font-semibold">
                             ${item.total?.toFixed(2)}
-                          </p>
+                          </span>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-6 w-6"
-                            onClick={() => updateItemQuantityOfOrder(item, -1)}
-                          >
-                            <MinusCircle className="h-4 w-4" />
-                          </Button>
+                          {isElevatedUser && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6"
+                              onClick={() =>
+                                updateItemQuantityOfOrder(item, -1)
+                              }
+                            >
+                              <MinusCircle className="h-4 w-4" />
+                            </Button>
+                          )}
                           <span>{item.quantity}</span>
                           <Button
                             size="icon"
@@ -466,7 +582,7 @@ export default function OrdersPage() {
               </div>
             </ScrollArea>
             <div className="p-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-4">
                 <div className="space-y-1">
                   <div className="flex items-center gap-4">
                     <span className="text-sm text-muted-foreground">
@@ -481,7 +597,7 @@ export default function OrdersPage() {
                       Descuentos:
                     </span>
                     <span className="font-medium text-green-600">
-                      -${selectedOrder.discountTotal?.toFixed(2)}
+                      ${selectedOrder.discountTotal?.toFixed(2)}
                     </span>
                   </div>
                   <div className="flex items-center gap-4">
@@ -490,9 +606,22 @@ export default function OrdersPage() {
                       ${selectedOrder.total?.toFixed(2)}
                     </span>
                   </div>
+                  {/* <div className="flex items-center gap-4">
+                    <span className="text-sm text-muted-foreground">
+                      Propina:
+                    </span>
+                    <span className="font-medium">
+                      ${selectedOrder.tip?.toFixed(2)}
+                    </span>
+                  </div> */}
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline">Cancelar</Button>
+                <div className="flex gap-2 flex-wrap">
+                  {isElevatedUser && (
+                    <Button variant="outline" className="grow">
+                      Cancelar
+                    </Button>
+                  )}
+
                   <Dialog
                     open={tipDialogOpen}
                     onOpenChange={() => {
@@ -501,9 +630,9 @@ export default function OrdersPage() {
                     }}
                   >
                     <DialogTrigger asChild>
-                      <Button>
+                      <Button className="grow">
                         {/*  <PlusCircle className="mr-2 h-4 w-4" /> */}
-                        Agregar propina
+                        Propina
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-[425px]">
@@ -532,18 +661,18 @@ export default function OrdersPage() {
                                   >
                                     <FormItem className="flex items-center space-x-3 space-y-0">
                                       <FormControl>
-                                        <RadioGroupItem value="15" />
+                                        <RadioGroupItem value="10" />
                                       </FormControl>
                                       <FormLabel className="font-normal">
-                                        15%
+                                        10%
                                       </FormLabel>
                                     </FormItem>
                                     <FormItem className="flex items-center space-x-3 space-y-0">
                                       <FormControl>
-                                        <RadioGroupItem value="18" />
+                                        <RadioGroupItem value="15" />
                                       </FormControl>
                                       <FormLabel className="font-normal">
-                                        18%
+                                        15%
                                       </FormLabel>
                                     </FormItem>
                                     <FormItem className="flex items-center space-x-3 space-y-0">
@@ -597,7 +726,11 @@ export default function OrdersPage() {
                       </Form>
                     </DialogContent>
                   </Dialog>
-                  <Button onClick={() => chargeOrder()}>Cobrar</Button>
+                  {isElevatedUser && (
+                    <Button className="grow" onClick={() => chargeOrder()}>
+                      Cobrar
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -611,7 +744,7 @@ export default function OrdersPage() {
         )}
       </div>
       {/* Right Sidebar */}
-      <div className="flex flex-col w-96 border-l p-4 h-full">
+      <div className="flex flex-col max-w-72 grow border-l p-4 h-full">
         <div className="flex flex-col mb-4 gap-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">
@@ -643,24 +776,82 @@ export default function OrdersPage() {
                 getMenuItemsByCategory(selectedCategory.id).map((item) => (
                   <Card key={item.id}>
                     <CardHeader className="p-4">
-                      <CardTitle className="text-sm">{item.name}</CardTitle>
+                      <div className="flex justify-between items-center gap-4 flex-wrap xl:flex-nowrap">
+                        <div>
+                          <CardTitle className="text-sm">{item.name}</CardTitle>
+                          <p className="text-sm text-muted-foreground">
+                            ${item.price}
+                          </p>
+                        </div>
+                        <div className="flex gap-2 flex-wrap xl:max-w-min">
+                          <Button
+                            className="grow"
+                            size="sm"
+                            onClick={() => addItemToOrder(item)}
+                            disabled={!selectedOrder}
+                          >
+                            Agregar
+                          </Button>
+                          <Button
+                            className="grow"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setItemToAdd(item);
+                              setCommentDialogOpen(true);
+                            }}
+                            disabled={!selectedOrder}
+                          >
+                            Con comentario
+                          </Button>
+                        </div>
+                      </div>
                     </CardHeader>
-                    <CardContent className="p-4 pt-0">
-                      <p className="text-sm text-muted-foreground">
-                        ${item.price}
-                      </p>
-                      <Button
-                        size="sm"
-                        className="mt-2"
-                        onClick={() => addItemToOrder(item)}
-                        disabled={!selectedOrder}
-                      >
-                        Agregar
-                      </Button>
-                    </CardContent>
                   </Card>
                 ))}
           </div>
+          <Dialog open={commentDialogOpen} onOpenChange={setCommentDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Agregar con comentarios</DialogTitle>
+                <DialogDescription>
+                  Agregar {itemToAdd?.name} a la orden de{" "}
+                  {selectedOrder?.customer || "l cliente"} con comentarios
+                </DialogDescription>
+              </DialogHeader>
+              <Form {...commentForm}>
+                <form
+                  onSubmit={commentForm.handleSubmit(onCommentSubmit)}
+                  className="space-y-4"
+                >
+                  <FormField
+                    control={commentForm.control}
+                    name="comments"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Input placeholder="Comentarios" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setCommentDialogOpen(false);
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button type="submit">Agregar con comentario</Button>
+                  </div>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
         </ScrollArea>
       </div>
     </div>

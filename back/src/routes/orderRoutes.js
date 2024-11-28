@@ -1,6 +1,9 @@
 import { Router } from "express";
 import Order from "../entities/OrderEntities/Order";
 import OrderItem from "../entities/OrderEntities/OrderItem";
+import MenuItem from "../entities/StockEntities/MenuItem";
+import Ingredient from "../entities/StockEntities/Ingredient";
+import StockItem from "../entities/StockEntities/StockItem";
 
 const router = Router();
 
@@ -79,6 +82,21 @@ router.get("/active", (req, res) => {
     res.status(500).json({ error: "Failed to fetch orders. " + error.message });
   }
 });
+
+router.get("/active-orders-by-agent/:agentId", (req, res) => {
+  try {
+    const { agentId } = req.params;
+    const orders = Order.getActiveByClaimedId(agentId);
+
+    // Enhance each order with items and calculations
+    const enhancedOrders = orders.map((order) => order.getEnhancedOrder());
+
+    res.json(enhancedOrders);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch orders. " + error.message });
+  }
+});
+
 
 // Get a specific order by ID
 router.get("/:id", (req, res) => {
@@ -176,18 +194,18 @@ router.put("/:id/charge", async (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
+    // Update order status
     order.tip = tip;
     order.paymentMethod = paymentMethod;
     order.status = "paid";
     order.billedById = billedById;
-
     order.save();
 
-    res.status(200).json({ message: "Order charged successfully", order });
+    res.json({ message: "Order charged successfully." });
   } catch (error) {
-    console.log(error);
-
-    res.status(500).json({ message: "Server error", error });
+    res
+      .status(500)
+      .json({ error: "Failed to charge order. " + error.message });
   }
 });
 
