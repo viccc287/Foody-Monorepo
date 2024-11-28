@@ -390,16 +390,33 @@ export default function OrdersPage() {
     }
   }
 
-  const onTipSubmit = (values: z.infer<typeof tipSchema>) => {
-    console.log("values", values);
-
+  const onTipSubmit = async (values: z.infer<typeof tipSchema>) => {
     // Handle tip submission here
     const tipAmount =
       values.tipType === "custom"
         ? parseFloat(values.customAmount || 0)
         : (parseFloat(values.tipType) / 100) * selectedOrder.total;
 
-    console.log("tipAmount", tipAmount);
+    try{
+      const response = await fetch(`${ORDER_BASE_FETCH_URL}/${selectedOrder?.id}/tip`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tip: tipAmount,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("Failed to update tip");
+        return;
+      }
+
+      const data = await response.json();
+
+      setSelectedOrder(data.order);
+    } catch (error) {
+      console.error("Error updating tip:", error)
+    }
 
     setTipDialogOpen(false);
 
@@ -609,14 +626,12 @@ export default function OrdersPage() {
                       ${selectedOrder.total?.toFixed(2)}
                     </span>
                   </div>
-                  {/* <div className="flex items-center gap-4">
-                    <span className="text-sm text-muted-foreground">
-                      Propina:
-                    </span>
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <span className="">Propina:</span>
                     <span className="font-medium">
                       ${selectedOrder.tip?.toFixed(2)}
                     </span>
-                  </div> */}
+                  </div>
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   {isElevatedUser && (

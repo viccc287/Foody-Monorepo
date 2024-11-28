@@ -249,9 +249,14 @@ router.patch("/:id/tip", (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
+    
+    console.log("tip", tip);
+    
     // Update only the tip
-    order.tip = tip;
+    order.tip += tip;
     order.save();
+    
+    console.log("Order", order);
 
     res.json({ 
       message: "Tip added successfully", 
