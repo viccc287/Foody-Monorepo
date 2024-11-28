@@ -1,4 +1,5 @@
 import db from "../../database/connection";
+import OrderItem from "./OrderItem";
 
 class Order {
   static tableName = '"Order"';
@@ -109,6 +110,28 @@ class Order {
       this.id
     );
     return result.changes > 0;
+  }
+
+  getEnhancedOrder() {
+    const orderItems = OrderItem.getByOrderId(this.id);
+
+    let subtotal = 0;
+    let discountTotal = 0;
+
+    orderItems.forEach((item) => {
+      subtotal += item.subtotal;
+      discountTotal += item.discountApplied;
+    });
+
+    const total = subtotal - discountTotal < 0 ? 0 : subtotal - discountTotal;
+
+    return {
+      ...this,
+      orderItems,
+      subtotal,
+      discountTotal,
+      total,
+    };
   }
 
   delete() {

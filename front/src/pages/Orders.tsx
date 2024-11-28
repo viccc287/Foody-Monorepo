@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Edit2, PlusCircle, Trash2 } from "lucide-react";
+import { Edit2, MinusCircle, PlusCircle, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -24,6 +24,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 import {
@@ -38,14 +39,18 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import TokenService from "@/services/tokenService";
+import AlertDialogDelete from "@/components/AlertDialogDelete";
 
 const orderSchema = z.object({
   customer: z.string().trim().min(1, "Customer name is required"),
 });
 
 const tipSchema = z.object({
-  tipType: z.enum(["15", "18", "20", "custom"]),
-  customAmount: z.string().optional(),
+  tipType: z.enum(["10", "15", "20", "custom"]),
+  customAmount: z
+    .number({ invalid_type_error: "Debe ser válido" })
+    .min(1, "La propina mínima es $1")
+    .optional(),
 });
 
 const ORDER_BASE_FETCH_URL = "http://localhost:3000/orders";
@@ -53,22 +58,9 @@ const ORDER_ITEM_FETCH_URL = "http://localhost:3000/order-items";
 const MENUITEM_FETCH_URL = "http://localhost:3000/menu/menu-items";
 const CATEGORIES_FETCH_URL = "http://localhost:3000/categories?type=menu";
 
-const exampleAgent = {
-  name: "Carlos",
-  lastName: "Hernández",
-  image: null,
-  address: "Calle Principal 123, Ciudad A",
-  phone: "555-112-3344",
-  rfc: "CHH123456789",
-  email: "carlos.hernandez@restaurante.com",
-  pin: "1234",
-  role: "manager",
-  isActive: true,
-};
+
 
 export default function OrdersPage() {
-  
-  console.log(TokenService.getUserInfo()?.role);
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -80,7 +72,8 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
   const [tipDialogOpen, setTipDialogOpen] = useState(false);
-  const [addItemDialogOpen, setAddItemDialogOpen] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<OrderItem | null>(null);
 
   const { toast } = useToast();
 
@@ -102,7 +95,7 @@ export default function OrdersPage() {
     resolver: zodResolver(tipSchema),
     defaultValues: {
       tipType: "15",
-      customAmount: "",
+      customAmount: 1,
     },
   });
 
@@ -139,43 +132,19 @@ export default function OrdersPage() {
       "success"
     );
 
+    console.log("menuItem", menuItem);
+
     // Find if item already exists in order
     const existingItem = selectedOrder.orderItems?.find(
       (item) => item.menuItemId === menuItem.id
     );
 
-    const timestamp = new Date().toISOString();
-
     let newOrderItem: OrderItem;
     let updatedOrder: Order;
 
     if (existingItem) {
-      const response = await fetch(
-        `${ORDER_ITEM_FETCH_URL}/${existingItem.id}/quantity`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            quantity: 1,
-            timestamp,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        console.error("Failed to update order item");
-        return;
-      }
-
-      newOrderItem = await response.json();
-      updatedOrder = {
-        ...selectedOrder,
-        orderItems: selectedOrder.orderItems.map((item) =>
-          item.id === newOrderItem.id ? newOrderItem : item
-        ),
-      };
+      return updateItemQuantityOfOrder(existingItem, 1);
     } else {
-      // Create new item
       const newItem: NewOrderItem = {
         menuItemId: menuItem.id,
         orderId: selectedOrder.id,
@@ -194,17 +163,48 @@ export default function OrdersPage() {
         return;
       }
 
-      newOrderItem = await response.json();
-      updatedOrder = {
-        ...selectedOrder,
-        orderItems: [...selectedOrder.orderItems, newOrderItem],
-      };
+      const data = await response.json();
+      setSelectedOrder(data.order);
     }
 
-    setSelectedOrder(updatedOrder);
+  };
+
+  const updateItemQuantityOfOrder = async (
+    orderItem: OrderItem,
+    quantity: number
+  ) => {
+    if (!selectedOrder) return;
+
+    const timestamp = new Date().toISOString();
+
+    const response = await fetch(
+      `${ORDER_ITEM_FETCH_URL}/${orderItem.id}/quantity`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          quantity,
+          timestamp,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      console.error("Failed to update order item");
+      return;
+    }
+
+    const data = await response.json();
+
+
+    setSelectedOrder(data.order);
+
+    return data.order;
   };
 
   const chargeOrder = async () => {
+    console.log("chargingOrder", selectedOrder);
+
     if (!selectedOrder) return;
 
     const response = await fetch(
@@ -214,7 +214,7 @@ export default function OrdersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           status: "paid",
-          billedById: exampleAgent.name,
+          billedById: exampleAgent.id,
         }),
       }
     );
@@ -225,12 +225,57 @@ export default function OrdersPage() {
     }
 
     const updatedOrder = await response.json();
+
+    console.log("updatedChargedOrder", updatedOrder);
+
     setOrders(
       orders.map((order) =>
         order.id === updatedOrder.id ? updatedOrder : order
       )
     );
+    setSelectedOrder(null);
+  };
+
+  const deleteOrderItem = async (orderItem: OrderItem) => {
+    if (!selectedOrder) return;
+
+    const response = await fetch(`${ORDER_ITEM_FETCH_URL}/${orderItem.id}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (!response.ok) {
+      console.error("Failed to delete order item");
+      return;
+    }
+
+    const orderData = await response.json();
+
+    console.log("orderData", orderData);
+
+    const updatedOrder = {
+      ...orderData,
+      orderItems: selectedOrder.orderItems.filter(
+        (item) => item.id !== orderItem.id
+      ),
+    };
+
+    console.log("updatedOrder", updatedOrder);
+
     setSelectedOrder(updatedOrder);
+  };
+
+  const handleDeleteItem = (item: OrderItem) => {
+    setItemToDelete(item);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = () => {
+    if (itemToDelete) {
+      deleteOrderItem(itemToDelete);
+    }
+    setShowDeleteDialog(false);
+    setItemToDelete(null);
   };
 
   async function onOrderSubmit(data: NewOrder) {
@@ -263,8 +308,6 @@ export default function OrdersPage() {
       values.tipType === "custom"
         ? parseFloat(values.customAmount || "0")
         : (parseFloat(values.tipType) / 100) * selectedOrder.total;
-
-    console.log("tipAmount", tipAmount);
 
     setTipDialogOpen(false);
 
@@ -310,7 +353,6 @@ export default function OrdersPage() {
           </Form>
         </DialogContent>
       </Dialog>
-
       {/* Left Sidebar */}
       <div className="flex flex-col w-64 border-r p-4 h-full">
         <div className="flex flex-col  mb-4 gap-4 ">
@@ -333,8 +375,12 @@ export default function OrdersPage() {
           ))}
         </ScrollArea>
       </div>
-
       {/* Main Content */}
+      <AlertDialogDelete
+        open={showDeleteDialog}
+        onConfirm={confirmDelete}
+        onCancel={() => setShowDeleteDialog(false)}
+      />{" "}
       <div className="flex flex-col grow p-6 h-full gap-6">
         {selectedOrder ? (
           <>
@@ -342,144 +388,10 @@ export default function OrdersPage() {
               <h1 className="text-2xl font-bold">
                 Orden de {selectedOrder.customer}
               </h1>
-              <div className="flex ml-auto gap-2">
-                <Dialog
-                  open={addItemDialogOpen}
-                  onOpenChange={setAddItemDialogOpen}
-                >
-                  <DialogTrigger asChild>
-                    <Button>
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Agregar artículos
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[700px] max-h-[90svh]">
-                    <DialogHeader>
-                      <DialogTitle>Agregar a la orden</DialogTitle>
-                      <DialogDescription>
-                        Agrega artículos a la orden de {selectedOrder.customer}
-                      </DialogDescription>
-                    </DialogHeader>
-                    <ScrollArea className="h-[calc(100vh-8rem)] mt-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        {menuItems.map((item) => (
-                          <Card key={item.id}>
-                            <CardHeader className="p-4">
-                              <CardTitle className="text-sm">
-                                {item.name}
-                              </CardTitle>
-                            </CardHeader>
-                            <CardContent className="p-4 pt-0">
-                              <p className="text-sm text-muted-foreground">
-                                ${item.price}
-                              </p>
-                              <Button
-                                size="sm"
-                                className="mt-2"
-                                onClick={() => addItemToOrder(item)}
-                              >
-                                Agregar
-                              </Button>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </DialogContent>
-                </Dialog>
-                <Dialog open={tipDialogOpen} onOpenChange={setTipDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button>
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Agregar propina
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                      <DialogTitle>Agregar propina</DialogTitle>
-                      <DialogDescription>
-                        Agrega propina la orden de {selectedOrder.customer}
-                      </DialogDescription>
-                    </DialogHeader>
-                    <Form {...tipForm}>
-                      <form
-                        onSubmit={tipForm.handleSubmit(onTipSubmit)}
-                        className="space-y-6"
-                      >
-                        <FormField
-                          control={tipForm.control}
-                          name="tipType"
-                          render={({ field }) => (
-                            <FormItem className="space-y-3">
-                              <FormLabel>Seleccionar propina</FormLabel>
-                              <FormControl>
-                                <RadioGroup
-                                  onValueChange={field.onChange}
-                                  defaultValue={field.value}
-                                  className="flex flex-col space-y-1"
-                                >
-                                  <FormItem className="flex items-center space-x-3 space-y-0">
-                                    <FormControl>
-                                      <RadioGroupItem value="15" />
-                                    </FormControl>
-                                    <FormLabel className="font-normal">
-                                      15%
-                                    </FormLabel>
-                                  </FormItem>
-                                  <FormItem className="flex items-center space-x-3 space-y-0">
-                                    <FormControl>
-                                      <RadioGroupItem value="18" />
-                                    </FormControl>
-                                    <FormLabel className="font-normal">
-                                      18%
-                                    </FormLabel>
-                                  </FormItem>
-                                  <FormItem className="flex items-center space-x-3 space-y-0">
-                                    <FormControl>
-                                      <RadioGroupItem value="20" />
-                                    </FormControl>
-                                    <FormLabel className="font-normal">
-                                      20%
-                                    </FormLabel>
-                                  </FormItem>
-                                  <FormItem className="flex items-center space-x-3 space-y-0">
-                                    <FormControl>
-                                      <RadioGroupItem value="custom" />
-                                    </FormControl>
-                                    <FormLabel className="font-normal">
-                                      Otro
-                                    </FormLabel>
-                                  </FormItem>
-                                </RadioGroup>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        {tipForm.watch("tipType") === "custom" && (
-                          <FormField
-                            control={tipForm.control}
-                            name="customAmount"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Monto personalizado</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    placeholder="Ingresar monto"
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        )}
-                        <Button type="submit">Agregar propina</Button>
-                      </form>
-                    </Form>
-                  </DialogContent>
-                </Dialog>
-              </div>
+              <Badge className="text-xs" variant='outline'>
+                {selectedOrder.claimedById}
+              </Badge>
+              <div className="flex ml-auto gap-2"></div>
             </div>
             <ScrollArea className="grow">
               <div className="grid grid-cols-[repeat(auto-fit,minmax(350px,1fr))] gap-4 grow">
@@ -487,7 +399,7 @@ export default function OrdersPage() {
                   <Card key={item.id}>
                     <CardContent className="p-4 flex justify-between items-center">
                       <div>
-                        <div className="flex items-center justify-center gap-2">
+                        <div className="flex items-center gap-2">
                           <p className="font-medium">
                             {findMenuItem(item.menuItemId)?.name ||
                               "Artículo eliminado"}
@@ -503,25 +415,57 @@ export default function OrdersPage() {
                               : null}
                           </p>
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          Cantidad: {item.quantity}
-                        </p>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <span>
+                            ${findMenuItem(item.menuItemId)?.price.toFixed(2)}{" "}
+                            c/u
+                          </span>
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="h-6 w-6"
+                            onClick={() => handleDeleteItem(item)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex justify-center flex-col">
-                        <p className="text-xs line-throug text-muted-foreground">
-                          ${item.subtotal?.toFixed(2)}
-                        </p>
+                      <div className="flex items-center gap-4">
+                        <div className="flex justify-center flex-col">
+                          <p className="text-xs line-throug text-muted-foreground">
+                            ${item.subtotal?.toFixed(2)}
+                          </p>
 
-                        <p className="font-semibold">
-                          ${item.total?.toFixed(2)}
-                        </p>
+                          <p className="font-semibold">
+                            ${item.total?.toFixed(2)}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-6 w-6"
+                            onClick={() => updateItemQuantityOfOrder(item, -1)}
+                          >
+                            <MinusCircle className="h-4 w-4" />
+                          </Button>
+                          <span>{item.quantity}</span>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-6 w-6"
+                            onClick={() => updateItemQuantityOfOrder(item, 1)}
+                          >
+                            <PlusCircle className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
                 ))}
               </div>
             </ScrollArea>
-            <div className="border-t bg-muted/30 p-4">
+            <div className="p-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
                   <div className="flex items-center gap-4">
@@ -549,7 +493,111 @@ export default function OrdersPage() {
                 </div>
                 <div className="flex gap-2">
                   <Button variant="outline">Cancelar</Button>
-                  <Button>Cobrar</Button>
+                  <Dialog
+                    open={tipDialogOpen}
+                    onOpenChange={() => {
+                      if (tipDialogOpen) tipForm.reset();
+                      setTipDialogOpen(!tipDialogOpen);
+                    }}
+                  >
+                    <DialogTrigger asChild>
+                      <Button>
+                        {/*  <PlusCircle className="mr-2 h-4 w-4" /> */}
+                        Agregar propina
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px]">
+                      <DialogHeader>
+                        <DialogTitle>Agregar propina</DialogTitle>
+                        <DialogDescription>
+                          Agrega propina la orden de {selectedOrder.customer}
+                        </DialogDescription>
+                      </DialogHeader>
+                      <Form {...tipForm}>
+                        <form
+                          onSubmit={tipForm.handleSubmit(onTipSubmit)}
+                          className="space-y-6"
+                        >
+                          <FormField
+                            control={tipForm.control}
+                            name="tipType"
+                            render={({ field }) => (
+                              <FormItem className="space-y-3">
+                                <FormLabel>Seleccionar propina</FormLabel>
+                                <FormControl>
+                                  <RadioGroup
+                                    onValueChange={field.onChange}
+                                    defaultValue={field.value}
+                                    className="flex flex-col space-y-1"
+                                  >
+                                    <FormItem className="flex items-center space-x-3 space-y-0">
+                                      <FormControl>
+                                        <RadioGroupItem value="15" />
+                                      </FormControl>
+                                      <FormLabel className="font-normal">
+                                        15%
+                                      </FormLabel>
+                                    </FormItem>
+                                    <FormItem className="flex items-center space-x-3 space-y-0">
+                                      <FormControl>
+                                        <RadioGroupItem value="18" />
+                                      </FormControl>
+                                      <FormLabel className="font-normal">
+                                        18%
+                                      </FormLabel>
+                                    </FormItem>
+                                    <FormItem className="flex items-center space-x-3 space-y-0">
+                                      <FormControl>
+                                        <RadioGroupItem value="20" />
+                                      </FormControl>
+                                      <FormLabel className="font-normal">
+                                        20%
+                                      </FormLabel>
+                                    </FormItem>
+                                    <FormItem className="flex items-center space-x-3 space-y-0">
+                                      <FormControl>
+                                        <RadioGroupItem value="custom" />
+                                      </FormControl>
+                                      <FormLabel className="font-normal">
+                                        Otro
+                                      </FormLabel>
+                                    </FormItem>
+                                  </RadioGroup>
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          {tipForm.watch("tipType") === "custom" && (
+                            <FormField
+                              control={tipForm.control}
+                              name="customAmount"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Monto personalizado</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      placeholder="Ingresar monto"
+                                      {...field}
+                                      onChange={(e) =>
+                                        field.onChange(
+                                          parseFloat(e.target.value)
+                                        )
+                                      }
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          )}
+                          <Button type="submit">Agregar propina</Button>
+                        </form>
+                      </Form>
+                    </DialogContent>
+                  </Dialog>
+                  <Button onClick={() => chargeOrder()}>Cobrar</Button>
                 </div>
               </div>
             </div>
@@ -562,7 +610,6 @@ export default function OrdersPage() {
           </div>
         )}
       </div>
-
       {/* Right Sidebar */}
       <div className="flex flex-col w-96 border-l p-4 h-full">
         <div className="flex flex-col mb-4 gap-4">
@@ -577,8 +624,8 @@ export default function OrdersPage() {
             )}
           </div>
         </div>
-        <ScrollArea className="h-[calc(100vh-8rem)] mt-4">
-          <div className="grid gap-4">
+        <ScrollArea className="h-full mt-4">
+          <div className="grid gap-2">
             {!selectedCategory
               ? // Show categories
                 categories.map((category) => (
@@ -587,7 +634,7 @@ export default function OrdersPage() {
                     className="cursor-pointer hover:bg-accent"
                     onClick={() => setSelectedCategory(category)}
                   >
-                    <CardHeader className="p-4">
+                    <CardHeader className="p-3">
                       <CardTitle className="text-sm">{category.name}</CardTitle>
                     </CardHeader>
                   </Card>

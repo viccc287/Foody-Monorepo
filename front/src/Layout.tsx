@@ -32,7 +32,9 @@ function AppLayout() {
     <SidebarProvider>
       <Toaster />
       {!isLoginRoute && userInfo && <AppSidebar />}
-      <main className="w-full p-4 h-[100svh]">
+      <main className="w-full p-4 h-[100svh] overflow-auto">
+        <div className="flex flex-col h-full ">
+
         {!isLoginRoute && userInfo && <SidebarTrigger />}
         <Routes>
           <Route path="/login" element={<Login />} />
@@ -60,7 +62,9 @@ function AppLayout() {
               </PrivateRoute>
             }
           />
-        </Routes>
+          </Routes>
+          </div>
+
       </main>
     </SidebarProvider>
   );

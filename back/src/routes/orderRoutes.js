@@ -166,50 +166,81 @@ router.get("/:orderId/order-items", (req, res) => {
   }
 });
 
-router.post("/order/:id/charge", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { tip, paymentMethod, billedById } = req.body;
-  
-      const order = Order.getById(Number(id));
-      if (!order) {
-        return res.status(404).json({ message: "Order not found" });
-      }
-  
-      order.tip = tip;
-      order.paymentMethod = paymentMethod;
-      order.status = "paid";
-      order.billedById = billedById;
-  
-      order.save();
-  
-      res.status(200).json({ message: "Order charged successfully", order });
-    } catch (error) {
-      res.status(500).json({ message: "Server error", error });
-    }
-  });
-  
-  // Ruta para cancelar la orden
-  router.post("/order/:id/cancel", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { cancelReason } = req.body;
-  
-      const order = Order.getById(Number(id));
-      if (!order) {
-        return res.status(404).json({ message: "Order not found" });
-      }
-  
-      order.status = "cancelled";
-      order.cancelledAt = new Date().toISOString();
-      order.cancelReason = cancelReason;
-  
-      order.save();
-  
-      res.status(200).json({ message: "Order cancelled successfully", order });
-    } catch (error) {
-      res.status(500).json({ message: "Server error", error });
-    }
-  });
+router.put("/:id/charge", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { tip, paymentMethod, billedById } = req.body;
 
+    const order = Order.getById(Number(id));
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    order.tip = tip;
+    order.paymentMethod = paymentMethod;
+    order.status = "paid";
+    order.billedById = billedById;
+
+    order.save();
+
+    res.status(200).json({ message: "Order charged successfully", order });
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({ message: "Server error", error });
+  }
+});
+
+// Ruta para cancelar la orden
+router.post("/order/:id/cancel", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { cancelReason } = req.body;
+
+    const order = Order.getById(Number(id));
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    order.status = "cancelled";
+    order.cancelledAt = new Date().toISOString();
+    order.cancelReason = cancelReason;
+
+    order.save();
+
+    res.status(200).json({ message: "Order cancelled successfully", order });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error });
+  }
+});
+
+
+// Add tip to order
+router.patch("/:id/tip", (req, res) => {
+  try {
+    const { id } = req.params;
+    const { tip } = req.body;
+
+    // Validate tip is provided
+    if (tip === undefined) {
+      return res.status(400).json({ error: "Tip amount is required" });
+    }
+
+    const order = Order.getById(Number(id));
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    // Update only the tip
+    order.tip = tip;
+    order.save();
+
+    res.json({ 
+      message: "Tip added successfully", 
+      order 
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to add tip. " + error.message });
+  }
+});
 export default router;

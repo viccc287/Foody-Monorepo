@@ -20,7 +20,7 @@ router.post("/", async (req, res) => {
                 message: 'Credenciales inválidas',
             });
         }
-        let payload = generateJwtPayload(agent.role, agent.email);
+        let payload = generateJwtPayload(agent.role, agent.email, agent.name, agent.lastName, agent.id);
         let token = generateToken(payload,'24h');
         res.status(200).json({
             token: token

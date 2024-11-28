@@ -1,37 +1,38 @@
 import db from "../../database/connection";
 import MenuItem from "../StockEntities/MenuItem";
 import Promo from "../PromoEntities/Promo";
+import Order from "./Order";
 
 class OrderItem {
   static tableName = "OrderItem";
 
-    constructor({
-        id,
-        menuItemId,
-        orderId,
-        promoId,
-        quantity,
-        subtotal,
-        discountApplied,
-        total,
-        promoName,
-        comments,
-        quantityHistory = "[]",
-        appliedPromos = "[]",
-    }) {
-        this.id = id || null;
-        this.menuItemId = menuItemId;
-        this.orderId = orderId;
-        this.promoId = promoId || null;
-        this.quantity = quantity;
-        this.subtotal = subtotal;
-        this.discountApplied = discountApplied || 0;
-        this.total = total || subtotal - this.discountApplied;
-        this.promoName = promoName || null;
-        this.comments = comments || null;
-        this.quantityHistory = JSON.parse(quantityHistory);
-        this.appliedPromos = JSON.parse(appliedPromos);
-    }
+  constructor({
+    id,
+    menuItemId,
+    orderId,
+    promoId,
+    quantity,
+    subtotal,
+    discountApplied,
+    total,
+    promoName,
+    comments,
+    quantityHistory = "[]",
+    appliedPromos = "[]",
+  }) {
+    this.id = id || null;
+    this.menuItemId = menuItemId;
+    this.orderId = orderId;
+    this.promoId = promoId || null;
+    this.quantity = quantity;
+    this.subtotal = subtotal;
+    this.discountApplied = discountApplied || 0;
+    this.total = total || subtotal - this.discountApplied;
+    this.promoName = promoName || null;
+    this.comments = comments || null;
+    this.quantityHistory = JSON.parse(quantityHistory);
+    this.appliedPromos = JSON.parse(appliedPromos);
+  }
 
   static getAll() {
     const stmt = db.prepare(`SELECT * FROM ${this.tableName}`);
@@ -55,14 +56,19 @@ class OrderItem {
 
   async addQuantity(additionalQuantity, timestamp = new Date().toISOString()) {
     // Add to history
-    this.quantityHistory.push({
-      quantity: additionalQuantity,
-      timestamp,
-    });
+
+    if (this.quantity + additionalQuantity >= 0) {
+      this.quantityHistory.push({
+        quantity: additionalQuantity,
+        timestamp,
+      });
+    }
 
     // Update total quantity
+
     this.quantity += additionalQuantity;
 
+    if (this.quantity < 0) this.quantity = 0;
 
     // Recalculate base subtotal
     const menuItem = await MenuItem.getById(this.menuItemId);
@@ -85,26 +91,30 @@ class OrderItem {
     const sortedHistory = [...this.quantityHistory].sort(
       (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
     );
-  
+
     // Process each promo
     activePromos.forEach((promo) => {
       let eligibleQuantity = 0;
-  
-        // Calculate eligible quantity based on timestamps        
+
+      // Calculate eligible quantity based on timestamps
       sortedHistory.forEach((entry) => {
+        entry.promoActive = false;
         if (promo.isValidAtTimestamp(entry.timestamp)) {
-          eligibleQuantity += 1;
+          entry.promoActive = true;
+          entry.promoId = promo.id;
+          entry.promoName = promo.name;
+          eligibleQuantity += entry.quantity;
+          eligibleQuantity < 0 ? 0 : eligibleQuantity;
         }
-      });        
-        
-  
+      });
+
       if (eligibleQuantity > 0) {
         const discount = promo.calculateDiscount(
           eligibleQuantity,
           eligibleQuantity * this.getBasePrice(),
           this.getBasePrice()
         );
-  
+
         if (discount > 0) {
           // Record applied promo
           this.appliedPromos.push({
@@ -115,10 +125,8 @@ class OrderItem {
             timestamp: currentTimestamp,
             type: promo.type,
           });
-          }
-        else {
-            
-          }
+        } else {
+        }
       }
     });
   }
@@ -128,8 +136,6 @@ class OrderItem {
   }
 
   updateTotals() {
-    console.log(this.appliedPromos);
-
     // Calculate total discount from all applied promos
     this.discountApplied = this.appliedPromos.at(-1)?.discountApplied || 0;
     // Ensure discount doesn't exceed subtotal
@@ -138,6 +144,7 @@ class OrderItem {
     // Calculate final total
     this.total = this.subtotal - this.discountApplied;
   }
+
 
   save() {
     if (this.id) {

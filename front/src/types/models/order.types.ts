@@ -31,22 +31,21 @@ export interface OrderItem extends NewOrderItem {
   discountApplied: number | null;
   total: number | null;
   promoId: number | null;
-    promoName: string | null;
-    appliedPromos: AppliedPromo[];
-    quantityHistory: QuantityHistory[];
+  promoName: string | null;
+  appliedPromos: AppliedPromo[];
+  quantityHistory: QuantityHistory[];
 }
 
-
-interface AppliedPromo{
-    promoId: number;
-    promoName: string;
-    quantity: number;
-    discountApplied: number;
-    timestamp: string;
-    type: string;
+interface AppliedPromo {
+  promoId: number;
+  promoName: string;
+  quantity: number;
+  discountApplied: number;
+  timestamp: string;
+  type: string;
 }
 
-interface QuantityHistory{
-    quantity: number;
-    timestamp: string;
+interface QuantityHistory {
+  quantity: number;
+  timestamp: string;
 }

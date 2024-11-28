@@ -154,7 +154,7 @@ export function AppSidebar() {
                 <DropdownMenuTrigger asChild>
                   <SidebarMenuButton>
                     <User />
-                    <span>{userInfo?.email}</span>
+                    <span>{userInfo?.name} { userInfo?.lastName}</span>
                     <ChevronUp className="ml-auto" />
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>

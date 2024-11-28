@@ -5,6 +5,9 @@ const TOKEN_KEY = "token";
 interface TokenPayload {
     role: string;
     email: string;
+    name: string;
+    lastName: string;
+    id: string;
     iat: number;
     exp: number;
     [key: string]: any;
@@ -71,8 +74,8 @@ class TokenService {
         if (!decoded) return null;
 
         // Return specific properties or the full payload
-        const { role, email } = decoded;
-        return { role, email };
+        const { role, email, name, lastName, id } = decoded;
+        return { role, email, name, lastName, id };
     }
 }
 

@@ -2,6 +2,7 @@ import { Router } from "express";
 import OrderItem from "../entities/OrderEntities/OrderItem";
 import Promo from "../entities/PromoEntities/Promo";
 import MenuItem from "../entities/StockEntities/MenuItem";
+import Order from "../entities/OrderEntities/Order";
 
 const router = Router();
 
@@ -43,9 +44,12 @@ router.post("/", async (req, res) => {
   
       // Add initial quantity which will handle promo calculations
       await orderItem.addQuantity(quantity, timestamp);
+
+      const order = Order.getById(orderId);
+      const enhancedOrder = order.getEnhancedOrder();
   
       // Return complete orderItem with calculated values
-      res.status(201).json(orderItem);
+      res.status(201).json({ orderItem, order: enhancedOrder });
   
     } catch (error) {
       console.error("Error creating OrderItem:", error);
@@ -63,9 +67,12 @@ router.put('/:id/quantity', async (req, res) => {
             return res.status(404).json({ error: 'OrderItem not found' });
         }
 
-        await orderItem.addQuantity(quantity, timestamp);
+      await orderItem.addQuantity(quantity, timestamp);
+      
+      const order = Order.getById(orderItem.orderId);
+      const enhancedOrder = order.getEnhancedOrder();
         
-        res.json(orderItem);
+        res.json({ orderItem, order: enhancedOrder });
     } catch (error) {
         console.log(error);
         
@@ -73,24 +80,31 @@ router.put('/:id/quantity', async (req, res) => {
     }
 });
 
-router.get("/order/:orderId", (req, res) => {
-  try {
-    const { orderId } = req.params;
-    const orderItems = OrderItem.getByOrderId(orderId);
+router.delete('/:id', async (req, res) => {
+  const { id } = req.params;
 
-    if (!orderItems || orderItems.length === 0) {
-      res.status(404).json({
-        error: "No se encontraron OrderItems para el OrderId proporcionado.",
-      });
-      return;
+  try {
+    const orderItem = await OrderItem.getById(id);
+    if (!orderItem) {
+      return res.status(404).json({ error: 'OrderItem not found' });
     }
 
-    res.json(orderItems);
+    const order = Order.getById(orderItem.orderId);
+  
+
+    await orderItem.delete();
+
+    const enhancedOrder = order.getEnhancedOrder();
+    console.log(enhancedOrder);
+
+    
+    res.json(enhancedOrder);
   } catch (error) {
-    res
-      .status(500)
-      .json({ error: "Error al obtener los OrderItems. " + error.message });
+    console.error("Error deleting OrderItem:", error);
+    res.status(500).json({ error: error.message });
   }
 });
+
+
 
 export default router;

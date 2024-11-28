@@ -22,10 +22,13 @@ export const verifyToken = (token) => {
     }
 };
 
-export const generateJwtPayload = (role, email) => {
+export const generateJwtPayload = (role, email, name, lastName, id) => {
     let payload = {
-        role: role,
-        email: email,
+        role,
+        email,
+        name,
+        lastName,
+        id,
     }
     return payload;
 };
