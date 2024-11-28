@@ -1,4 +1,5 @@
 import SortableTableHeadSet from "@/components/SortableTableHeadSet";
+import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -230,12 +231,12 @@ const savePromo = async (promo: Promo): Promise<Promo> => {
   }
 };
 
-// const deletePromo = async (id: number): Promise<void> => {
-//    const response = await fetch(`${FETCH_BASE_URL}/menu-item/${id}`, {
-//       method: "DELETE",
-//    });
-//    if (!response.ok) throw new Error("Error al eliminar la promoción");
-// };
+const deletePromo = async (id: number): Promise<void> => {
+  const response = await fetch(`${BASE_FETCH_URL}/promos-with-availability/${id}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) throw new Error("Error al eliminar la promoción");
+};
 
 const tableHeaderColumns: SortableColumn<Promo>[] = [
   { key: "name", label: "Nombre" },
@@ -916,7 +917,7 @@ export default function Promos() {
                         <li key={day}>
                           {
                             daysTranslations[
-                              day as keyof typeof daysTranslations
+                            day as keyof typeof daysTranslations
                             ]
                           }
                           : {startTime} - {endTime}
@@ -933,13 +934,31 @@ export default function Promos() {
                     >
                       <Edit2 className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      onClick={() => handleDelete(promo.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="icon">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Confirmar eliminación</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            ¿Realmente desea eliminar esta promoción? Esta acción no se puede deshacer.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <Button variant="outline">Cancelar</Button>
+                          <Button
+                            variant="destructive"
+                            onClick={() => handleDelete(promo.id)}
+                          >
+                            Confirmar
+                          </Button>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+
                   </div>
                 </TableCell>
               </TableRow>
