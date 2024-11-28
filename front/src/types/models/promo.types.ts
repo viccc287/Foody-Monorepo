@@ -17,7 +17,7 @@ export interface NewPromo {
 }
 
 export interface Promo extends NewPromo {
-  id?: number; // ID adicional
+  id: number; // ID adicional
 }
 
 export type FormValues = NewPromo; // Usa el mismo tipo para el formulario

@@ -140,6 +140,39 @@ router.put("/promos-with-availability/:id", async (req, res) => {
   }
 });
 
+// Delete a promo and its availability
+router.delete("/promos-with-availability/:id", async (req, res) => {
+  try {
+    const promoId = req.params.id;
+
+    // Fetch the existing promo
+    const promo = Promo.getById(promoId);
+    if (!promo) {
+      return res.status(404).json({ error: "Promo not found." });
+    }
+
+    // Delete the promo and its associated recurrence rules
+    const success = promo.delete();
+    if (!success) {
+      return res
+        .status(500)
+        .json({ error: "Failed to delete the promo." });
+    }
+
+    res
+      .status(200)
+      .json({ message: "Promo and its availability successfully deleted." });
+  } catch (error) {
+    console.error("Error in DELETE promo:", error);
+    res
+      .status(500)
+      .json({
+        error: `Failed to delete promo and its availability. ${error.message}`,
+      });
+  }
+});
+
+
 // Get all promotions with recurrence information
 router.get("/promos-with-availability", (req, res) => {
   try {
