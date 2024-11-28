@@ -26,6 +26,7 @@ import {
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
+import {Link, useNavigate} from "react-router-dom";
 
 import {
   Tooltip,
@@ -34,13 +35,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-import { Link } from "react-router-dom";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import tokenService from "@/services/tokenService.ts";
 
 const items = [
   {
@@ -87,6 +88,11 @@ const items = [
 
 export function AppSidebar() {
   const { open } = useSidebar();
+  const navigate = useNavigate();
+  const handleLogout = () => {
+    tokenService.clearToken();
+    navigate('/login');
+  };
 
   return (
     <TooltipProvider>
@@ -139,7 +145,7 @@ export function AppSidebar() {
                   <DropdownMenuItem>
                     <span>Perfil de agente</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleLogout}>
                     <span>Cerrar sesión</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
