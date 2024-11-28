@@ -133,7 +133,7 @@ export function AppSidebar() {
                             </SidebarMenuButton>
                           </SidebarMenuItem>
                         </TooltipTrigger>
-                        <TooltipContent>{item.title}</TooltipContent>
+                        <TooltipContent side="right">{item.title}</TooltipContent>
                       </Tooltip>
                     )
                 )}

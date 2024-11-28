@@ -98,11 +98,11 @@ export default function LoginForm() {
                             <Input
                                 type="password"
                                 id="password"
-                                placeholder="Password"
+                                placeholder="Contraseña"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
-                                aria-label="Password"
+                                aria-label="Contraseña"
                             />
                         </div>
                     )}
