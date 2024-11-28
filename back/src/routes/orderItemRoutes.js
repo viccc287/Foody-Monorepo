@@ -79,14 +79,12 @@ router.put("/:id/quantity", async (req, res) => {
 
     for (const ingredient of ingredients) {
       const stockItem = StockItem.getById(ingredient.inventoryProductId);
-      console.log('stock de stockItem antes: ', stockItem.name, stockItem.stock);
       
       if (stockItem.stock - ingredient.quantityUsed * quantity < 0) {
         notEnoughStock.push({...stockItem, required: ingredient.quantityUsed * quantity});
         continue;
       }
       stockItem.stock -= ingredient.quantityUsed * quantity;
-      console.log('stock de stockItem despues: ', stockItem.name, stockItem.stock);
 
       stockItem.save();
     }
