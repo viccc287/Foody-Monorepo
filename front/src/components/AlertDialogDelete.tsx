@@ -17,7 +17,8 @@ const VALID_PIN = "1234"; // Should come from environment/config
 function AlertDialogDelete({
   open,
   onConfirm,
-  onCancel,
+    onCancel,
+  setOpen,
   description = "",
   requireElevation = true,
 }) {
@@ -45,7 +46,7 @@ function AlertDialogDelete({
   };
 
   return (
-    <AlertDialog open={open}>
+    <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>

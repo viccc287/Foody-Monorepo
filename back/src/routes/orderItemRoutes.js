@@ -68,19 +68,26 @@ router.put("/:id/quantity", async (req, res) => {
     const orderItem = await OrderItem.getById(id);
     if (!orderItem) {
       return res.status(404).json({ error: "OrderItem not found" });
+    }    
+
+    if (orderItem.quantity + quantity < 0) {
+      return res.status(400).json({ error: "No se puede reducir más la cantidad de el item" });
     }
-    
     const ingredients = Ingredient.getByMenuItemId(orderItem.menuItemId);
 
     const notEnoughStock = [];
 
     for (const ingredient of ingredients) {
       const stockItem = StockItem.getById(ingredient.inventoryProductId);
+      console.log('stock de stockItem antes: ', stockItem.name, stockItem.stock);
+      
       if (stockItem.stock - ingredient.quantityUsed * quantity < 0) {
         notEnoughStock.push({...stockItem, required: ingredient.quantityUsed * quantity});
         continue;
       }
       stockItem.stock -= ingredient.quantityUsed * quantity;
+      console.log('stock de stockItem despues: ', stockItem.name, stockItem.stock);
+
       stockItem.save();
     }
 
@@ -111,10 +118,20 @@ router.delete("/:id", async (req, res) => {
     if (!orderItem) {
       return res.status(404).json({ error: "OrderItem not found" });
     }
-
     const order = Order.getById(orderItem.orderId);
 
+    const ingredients = Ingredient.getByMenuItemId(orderItem.menuItemId);
+
+    console.log('quantity on order:', orderItem.quantity);
+    
+    for (const ingredient of ingredients) {
+      const stockItem = StockItem.getById(ingredient.inventoryProductId);
+      stockItem.stock += ingredient.quantityUsed * orderItem.quantity;
+      stockItem.save();
+    }
     await orderItem.delete();
+
+
 
     const enhancedOrder = order.getEnhancedOrder();
     console.log(enhancedOrder);

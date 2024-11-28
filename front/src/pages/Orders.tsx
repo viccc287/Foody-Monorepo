@@ -243,6 +243,8 @@ export default function OrdersPage() {
     comments: string | null = null
   ) => {
     if (!selectedOrder) return;
+    if (orderItem.quantity + quantity < 0) return;
+    ;
 
     const timestamp = new Date().toISOString();
 
@@ -328,9 +330,10 @@ export default function OrdersPage() {
       return;
     }
 
+    alert("Eliminado", "El artículo ha sido eliminado de la orden, el inventario ha sido reestablecido", "success");
+
     const orderData = await response.json();
 
-    console.log("orderData", orderData);
 
     const updatedOrder = {
       ...orderData,
@@ -339,7 +342,6 @@ export default function OrdersPage() {
       ),
     };
 
-    console.log("updatedOrder", updatedOrder);
 
     setSelectedOrder(updatedOrder);
   };
@@ -482,6 +484,7 @@ export default function OrdersPage() {
       {/* Main Content */}
       <AlertDialogDelete
         open={showDeleteDialog}
+        setOpen={setShowDeleteDialog}
         onConfirm={confirmDelete}
         onCancel={() => setShowDeleteDialog(false)}
       />{" "}
