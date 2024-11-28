@@ -32,7 +32,7 @@ function AppLayout() {
     <SidebarProvider>
       <Toaster />
       {!isLoginRoute && userInfo && <AppSidebar />}
-      <main className="w-full p-4 overflow-auto">
+      <main className="w-full p-4 h-[100svh]">
         {!isLoginRoute && userInfo && <SidebarTrigger />}
         <Routes>
           <Route path="/login" element={<Login />} />

@@ -42,6 +42,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import tokenService from "@/services/tokenService.ts";
+import { useEffect, useState } from "react";
 
 const items = [
   {
@@ -94,16 +95,21 @@ const items = [
   },
 ];
 
-const userInfo = tokenService.getUserInfo();
-
 export function AppSidebar() {
   const { open } = useSidebar();
   const navigate = useNavigate();
+
+  const [userInfo, setUserInfo] = useState(tokenService.getUserInfo());
+
+  useEffect(() => {
+    const updatedUserInfo = tokenService.getUserInfo();
+    setUserInfo(updatedUserInfo);
+  }, []);
+
   const handleLogout = () => {
     tokenService.clearToken();
     navigate("/login");
   };
-
 
   return (
     <TooltipProvider>
@@ -115,7 +121,7 @@ export function AppSidebar() {
               <SidebarMenu>
                 {items.map(
                   (item) =>
-                    item.allowedRoles.includes(userInfo.role) && (
+                    item.allowedRoles.includes(userInfo?.role) && (
                       <Tooltip key={item.title}>
                         <TooltipTrigger>
                           <SidebarMenuItem>
