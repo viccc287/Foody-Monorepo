@@ -54,8 +54,9 @@ export default function LoginForm() {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
+                    'X-No-Auth': 'true',
                 },
-                body: JSON.stringify({ email, pin }),
+                body: JSON.stringify({ email, pin })
             });
 
             if (!response.ok) {
