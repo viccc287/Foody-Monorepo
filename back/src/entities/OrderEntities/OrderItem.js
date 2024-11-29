@@ -77,6 +77,9 @@ class OrderItem {
     // Get active promos
     const promos = await Promo.getActiveByMenuItemId(this.menuItemId);
 
+    console.log("active promos", promos.length);
+    
+
     // Calculate new promotions
     this.calculatePromotions(timestamp, promos);
 
@@ -100,9 +103,9 @@ class OrderItem {
       sortedHistory.forEach((entry) => {
         entry.promoActive = false;
         if (promo.isValidAtTimestamp(entry.timestamp)) {
-          entry.promoActive = true;
+  /*         entry.promoActive = true;
           entry.promoId = promo.id;
-          entry.promoName = promo.name;
+          entry.promoName = promo.name; */
           eligibleQuantity += entry.quantity;
           eligibleQuantity < 0 ? 0 : eligibleQuantity;
         }
@@ -126,6 +129,10 @@ class OrderItem {
             type: promo.type,
           });
         } else {
+          // Remove promo from applied list
+          this.appliedPromos = this.appliedPromos.filter(
+            (appliedPromo) => appliedPromo.promoId !== promo.id
+          );
         }
       }
     });
@@ -137,6 +144,10 @@ class OrderItem {
 
   updateTotals() {
     // Calculate total discount from all applied promos
+    console.log("applied promos", this.appliedPromos);
+    
+    
+    
     this.discountApplied = this.appliedPromos.at(-1)?.discountApplied || 0;
     // Ensure discount doesn't exceed subtotal
     this.discountApplied = Math.min(this.discountApplied, this.subtotal);
@@ -156,7 +167,7 @@ class OrderItem {
         this.subtotal = menuItem.price * this.quantity;
       }
 
-      // Recalcular el descuento si hay promociones activas
+      /* // Recalcular el descuento si hay promociones activas
       const activePromos = Promo.getActiveByMenuItemId(this.menuItemId);
       if (activePromos.length > 0) {
         this.discountApplied = activePromos.reduce((acc, promo) => {
@@ -175,7 +186,7 @@ class OrderItem {
       }
 
       // Calcular el total final
-      this.total = this.subtotal - this.discountApplied;
+      this.total = this.subtotal - this.discountApplied; */
 
       return this.#createRecord();
     }

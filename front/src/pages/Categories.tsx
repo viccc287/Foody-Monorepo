@@ -36,12 +36,24 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ChevronsUpDown, Edit2, PlusCircle, Trash2 } from "lucide-react";
 
 import { Category, NewCategory, SortableColumn } from "@/types";
 import useSortConfig from "@/lib/useSortConfig";
 import SortableTableHeadSet from "@/components/SortableTableHeadSet";
+import AlertDialogTrash from "@/components/AlertDialogTrash";
 
 const types = ["menu", "stock"];
 
@@ -347,13 +359,11 @@ export default function Categories() {
                     >
                       <Edit2 className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      onClick={() => handleDelete(category.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <AlertDialogTrash
+                      itemToDelete={category}
+                      handleDelete={handleDelete}
+                      description="¿Realmente desea eliminar esta categoría? Esta acción no se puede deshacer. Se eliminarán todos los elementos asociados a esta categoría."
+                    />
                   </div>
                 </TableCell>
               </TableRow>

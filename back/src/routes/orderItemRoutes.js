@@ -36,17 +36,36 @@ router.post("/", async (req, res) => {
     const orderItem = new OrderItem({
       menuItemId,
       orderId,
-      quantity: 0, // Start at 0 since we'll add quantity next
+      quantity: 0,
       subtotal: 0,
       comments,
       quantityHistory: "[]",
       appliedPromos: "[]",
     });
 
-    // Save initial record
-    await orderItem.save();
+    
 
-    // Add initial quantity which will handle promo calculations
+    const ingredients = Ingredient.getByMenuItemId(orderItem.menuItemId);
+
+    const notEnoughStock = [];
+
+    for (const ingredient of ingredients) {
+      const stockItem = StockItem.getById(ingredient.inventoryProductId);
+      
+      if (stockItem.stock - ingredient.quantityUsed * quantity < 0) {
+        notEnoughStock.push({...stockItem, required: ingredient.quantityUsed * quantity});
+        continue;
+      }
+      stockItem.stock -= ingredient.quantityUsed * quantity;
+
+      stockItem.save();
+    }
+
+    if (notEnoughStock.length > 0) {
+      return res.status(400).json({ error: "No hay suficientes insumos para agregar esto", notEnoughStock });
+    }
+
+    await orderItem.save();
     await orderItem.addQuantity(quantity, timestamp);
 
     const order = Order.getById(orderId);
@@ -63,6 +82,7 @@ router.post("/", async (req, res) => {
 router.put("/:id/quantity", async (req, res) => {
   const { id } = req.params;
   const { quantity, timestamp, comments } = req.body;
+  
 
   try {
     const orderItem = await OrderItem.getById(id);
@@ -102,7 +122,6 @@ router.put("/:id/quantity", async (req, res) => {
 
     res.json({ orderItem, order: enhancedOrder });
   } catch (error) {
-    console.log(error);
 
     res.status(500).json({ error: error.message });
   }
@@ -120,7 +139,6 @@ router.delete("/:id", async (req, res) => {
 
     const ingredients = Ingredient.getByMenuItemId(orderItem.menuItemId);
 
-    console.log('quantity on order:', orderItem.quantity);
     
     for (const ingredient of ingredients) {
       const stockItem = StockItem.getById(ingredient.inventoryProductId);
@@ -132,7 +150,6 @@ router.delete("/:id", async (req, res) => {
 
 
     const enhancedOrder = order.getEnhancedOrder();
-    console.log(enhancedOrder);
 
     res.json(enhancedOrder);
   } catch (error) {

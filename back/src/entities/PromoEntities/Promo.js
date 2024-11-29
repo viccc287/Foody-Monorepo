@@ -27,7 +27,7 @@ class Promo {
     this.buy_quantity = buy_quantity || null;
     this.pay_quantity = pay_quantity || null;
     this.percentage = percentage || null;
-    this.always = always || false;
+    this.always = !!always || false;
     this.isActive = !!isActive;
     this.name = name;
   }
@@ -69,17 +69,16 @@ class Promo {
   isCurrentlyActive() {
     const now = new Date();
 
+    // Si la promoción es 'always', está siempre activa
+    if (this.always) {
+      return true;
+    }
     // Verificar si la promoción está dentro de las fechas de inicio y fin
     if (this.startDate && now < new Date(this.startDate)) {
       return false;
     }
     if (this.endDate && now > new Date(this.endDate)) {
       return false;
-    }
-
-    // Si la promoción es 'always', está siempre activa
-    if (this.always) {
-      return true;
     }
 
     // Verificar reglas de recurrencia
@@ -90,12 +89,11 @@ class Promo {
   isValidAtTimestamp(timestamp) {
     const checkTime = new Date(timestamp);
 
+    // Check if always valid
+    if (this.always) return true;
     // Check if within promo period
     if (this.startDate && checkTime < new Date(this.startDate)) return false;
     if (this.endDate && checkTime > new Date(this.endDate)) return false;
-
-    // Check if always valid
-    if (this.always) return true;
 
     // Check recurrence rules
     const rules = this.getRecurrenceRules();

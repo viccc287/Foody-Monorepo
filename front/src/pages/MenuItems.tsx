@@ -51,6 +51,8 @@ import { useToast } from "@/hooks/use-toast";
 import type { SortableColumn } from "@/types";
 import useSortConfig from "@/lib/useSortConfig";
 import SortableTableHeadSet from "@/components/SortableTableHeadSet";
+import AlertDialogTrash from "@/components/AlertDialogTrash";
+import { Badge } from "@/components/ui/badge";
 
 type StockItem = {
   id: number;
@@ -102,7 +104,7 @@ const formSchema = z.object({
     .min(1, "La cantidad debe ser mayor a 0"),
   unit: z.string().trim().min(1, "Unidad requerida"),
   isActive: z.boolean(),
-  categoryId: z.number({ required_error: "Categoría requerida"}),
+  categoryId: z.number({ required_error: "Categoría requerida" }),
   printLocations: z.array(z.string()),
   variablePrice: z.boolean(),
   price: z
@@ -134,7 +136,8 @@ const fetchItems = async (): Promise<MenuItem[]> => {
 const fetchStockItems = async (): Promise<StockItem[]> => {
   const response = await fetch(`${BASE_FETCH_URL}/stock-items`);
   const data: StockItem[] = await response.json();
-  if (!response.ok) throw new Error("Error al obtener los artículos del inventario");
+  if (!response.ok)
+    throw new Error("Error al obtener los artículos del inventario");
   return data;
 };
 
@@ -169,7 +172,6 @@ const createItem = async (values: FormValues): Promise<MenuItem> => {
     },
     body: JSON.stringify(values),
   });
-
 
   if (!response.ok) throw new Error("Error al crear el artículo");
   const data = await response.json();
@@ -671,10 +673,12 @@ export default function MenuItems() {
                     : "No imprimir"}
                 </TableCell>
                 <TableCell>{item.variablePrice ? "Sí" : "No"}</TableCell>
-                <TableCell
-                  className={item.isActive ? "text-green-600" : "text-red-600"}
-                >
-                  {item.isActive ? "Activo" : "Inactivo"}
+                <TableCell>
+                  <Badge
+                    className={item.isActive ? "bg-green-600" : "bg-red-600"}
+                  >
+                    {item.isActive ? "Activo" : "Inactivo"}
+                  </Badge>
                 </TableCell>
                 <TableCell>
                   <ul>
@@ -695,13 +699,11 @@ export default function MenuItems() {
                     >
                       <Edit2 className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      onClick={() => handleDelete(item.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <AlertDialogTrash
+                      itemToDelete={item}
+                      handleDelete={handleDelete}
+                      description="¿Realmente desea eliminar este artículo? Esta acción no se puede deshacer."
+                    />
                   </div>
                 </TableCell>
               </TableRow>

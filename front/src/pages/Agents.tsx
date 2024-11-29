@@ -89,7 +89,7 @@ const formSchema = z.object({
 });
 
 const roles = [
-  { name: "Administrador", value: "manager" },
+  { name: "Gerente", value: "manager" },
   { name: "Cajero", value: "cashier" },
   { name: "Mesero", value: "waiter" },
   { name: "Cocinero", value: "cook" },

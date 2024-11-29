@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS "Order" (
     status TEXT NOT NULL CHECK (status IN ('active', 'paid', 'cancelled', 'unpaid')),
     claimedById INTEGER,
     billedById INTEGER,
+    billedAt DATETIME,
     FOREIGN KEY (claimedById) REFERENCES Agent (id),
     FOREIGN KEY (billedById) REFERENCES Agent (id)
 );

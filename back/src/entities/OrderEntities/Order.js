@@ -18,6 +18,7 @@ class Order {
     status,
     claimedById,
     billedById,
+    billedAt,
   }) {
     this.id = id || null;
     this.customer = customer;
@@ -32,6 +33,7 @@ class Order {
     this.status = status || "active";
     this.claimedById = claimedById || null;
     this.billedById = billedById || null;
+    this.billedAt = billedAt || null;
   }
 
   static getAll() {
@@ -79,8 +81,8 @@ class Order {
 
   #createRecord() {
     const stmt = db.prepare(
-      `INSERT INTO ${Order.tableName} (customer, subtotal, discountTotal, total, tip, paymentMethod, status, claimedById, billedById)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO ${Order.tableName} (customer, subtotal, discountTotal, total, tip, paymentMethod, status, claimedById, billedById, billedAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
     const result = stmt.run(
       this.customer,
@@ -91,7 +93,8 @@ class Order {
       this.paymentMethod,
       this.status,
       this.claimedById,
-      this.billedById
+      this.billedById,
+      this.billedAt
     );
     this.id = result.lastInsertRowid;
     return this.id;
@@ -100,7 +103,7 @@ class Order {
   #updateRecord() {
     const stmt = db.prepare(
       `UPDATE ${Order.tableName}
-            SET customer = ?, subtotal = ?, discountTotal = ?, total = ?, tip = ?, paymentMethod = ?, cancelledAt = ?, cancelReason = ?, status = ?, claimedById = ?, billedById = ?
+            SET customer = ?, subtotal = ?, discountTotal = ?, total = ?, tip = ?, paymentMethod = ?, cancelledAt = ?, cancelReason = ?, status = ?, claimedById = ?, billedById = ?, billedAt = ?
             WHERE id = ?`
     );
     const result = stmt.run(
@@ -115,6 +118,7 @@ class Order {
       this.status,
       this.claimedById,
       this.billedById,
+      this.billedAt,
       this.id
     );
     return result.changes > 0;

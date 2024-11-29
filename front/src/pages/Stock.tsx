@@ -47,6 +47,8 @@ import type {
   Category,
   Supplier,
 } from "@/types";
+import AlertDialogTrash from "@/components/AlertDialogTrash";
+import { Badge } from "@/components/ui/badge";
 
 const units = ["pieza", "vaso", "botella", "cartón", "kg", "g", "l", "ml"];
 
@@ -136,6 +138,11 @@ const tableHeaderColumns: SortableColumn<StockItem>[] = [
   { key: "categoryId", label: "Categoría" },
   { key: "supplierId", label: "Proveedor" },
 ];
+
+const MXN = new Intl.NumberFormat("es-MX", {
+  style: "currency",
+  currency: "MXN",
+});
 
 export default function Stock() {
   const [items, setItems] = useState<StockItem[]>([]);
@@ -462,11 +469,13 @@ export default function Stock() {
                 <TableCell>{item.name}</TableCell>
                 <TableCell>{item.stock}</TableCell>
                 <TableCell>{item.unit}</TableCell>
-                <TableCell>{item.cost.toFixed(2)}</TableCell>
-                <TableCell
-                  className={item.isActive ? "text-green-600" : "text-red-600"}
-                >
-                  {item.isActive ? "Activo" : "Inactivo"}
+                <TableCell>{MXN.format(item.cost)}</TableCell>
+                <TableCell>
+                  <Badge
+                    className={item.isActive ? "bg-green-600" : "bg-red-600"}
+                  >
+                    {item.isActive ? "Activo" : "Inactivo"}
+                  </Badge>
                 </TableCell>
                 <TableCell>
                   {categories.find(
@@ -486,13 +495,11 @@ export default function Stock() {
                     >
                       <Edit2 className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      onClick={() => handleDelete(item.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <AlertDialogTrash
+                      itemToDelete={item}
+                      handleDelete={handleDelete}
+                      description="¿Realmente desea eliminar este artículo? Esta acción no se puede deshacer."
+                    />
                   </div>
                 </TableCell>
               </TableRow>

@@ -48,6 +48,24 @@ router.get("/", (req, res) => {
   }
 });
 
+router.get("/today", (req, res) => {
+  try {
+    const orders = Order.getAll();
+
+    const enhancedOrders = orders.map((order) => order.getEnhancedOrder());
+
+    const today = new Date().toISOString().split("T")[0];
+
+    const todayOrders = enhancedOrders.filter(
+      (order) => order.createdAt.split("T")[0] === today
+    );
+
+    res.json(todayOrders);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch orders. " + error.message });
+  }
+});
+
 router.get("/active", (req, res) => {
   try {
     const orders = Order.getByStatus("active");
@@ -96,7 +114,6 @@ router.get("/active-orders-by-agent/:agentId", (req, res) => {
     res.status(500).json({ error: "Failed to fetch orders. " + error.message });
   }
 });
-
 
 // Get a specific order by ID
 router.get("/:id", (req, res) => {
@@ -199,13 +216,12 @@ router.put("/:id/charge", async (req, res) => {
     order.paymentMethod = paymentMethod;
     order.status = "paid";
     order.billedById = billedById;
+    order.billedAt = new Date().toISOString();
     order.save();
 
     res.json({ message: "Order charged successfully." });
   } catch (error) {
-    res
-      .status(500)
-      .json({ error: "Failed to charge order. " + error.message });
+    res.status(500).json({ error: "Failed to charge order. " + error.message });
   }
 });
 
@@ -232,7 +248,6 @@ router.post("/order/:id/cancel", async (req, res) => {
   }
 });
 
-
 // Add tip to order
 router.patch("/:id/tip", (req, res) => {
   try {
@@ -249,16 +264,15 @@ router.patch("/:id/tip", (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
-        
     // Update only the tip
     order.tip += tip;
     order.save();
-    
+
     const enhancedOrder = order.getEnhancedOrder();
 
-    res.json({ 
-      message: "Tip added successfully", 
-      order: enhancedOrder 
+    res.json({
+      message: "Tip added successfully",
+      order: enhancedOrder,
     });
   } catch (error) {
     res.status(500).json({ error: "Failed to add tip. " + error.message });

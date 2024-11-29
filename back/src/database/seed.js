@@ -184,7 +184,7 @@ const seed = () => {
       {
         name: "Carlos",
         lastName: "Hernández",
-        image: null,
+        image: "",
         address: "Calle Principal 123, Ciudad A",
         phone: "555-112-3344",
         rfc: "CHH123456789",
@@ -196,7 +196,7 @@ const seed = () => {
       {
         name: "Ana",
         lastName: "López",
-        image: null,
+        image: "",
         address: "Avenida Central 456, Ciudad B",
         phone: "555-223-4455",
         rfc: "ALO987654321",
@@ -208,7 +208,7 @@ const seed = () => {
       {
         name: "Luis",
         lastName: "Martínez",
-        image: null,
+        image: "",
         address: "Calle Secundaria 789, Ciudad C",
         phone: "555-334-5566",
         rfc: "LUM876543210",

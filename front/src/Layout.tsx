@@ -18,6 +18,7 @@ import Login from "@/pages/Login";
 import Orders from "@/pages/Orders";
 import TokenService from "./services/tokenService";
 import History from "./pages/History";
+import Dashboard from "./pages/Dashboard";
 
 const ROUTE_ROLES = {
   "/menu-items": ["manager"],
@@ -68,9 +69,7 @@ function AppLayout() {
                     <Route
                       path="/"
                       element={
-                        <div>
-                          <h1>HOME</h1>
-                        </div>
+                       <Dashboard/>
                       }
                     />
                     <Route

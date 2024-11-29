@@ -74,6 +74,8 @@ router.delete("/:id", (req, res) => {
             res.status(404).json({ error: "Category not found." });
         }
     } catch (error) {
+        console.log(error);
+        
         res.status(500).json({ error: "Failed to delete category. " + error.message });
     }
 });

@@ -5,6 +5,7 @@ import {
   PlusCircle,
   RefreshCcw,
   Trash2,
+  X,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { set, useForm } from "react-hook-form";
@@ -60,6 +61,13 @@ import { Badge } from "@/components/ui/badge";
 import TokenService from "@/services/tokenService";
 import AlertDialogDelete from "@/components/AlertDialogDelete";
 
+interface NotEnoughStockItem {
+  name: string;
+  unit: string;
+  stock: number;
+  required: number;
+}
+
 const orderSchema = z.object({
   customer: z.string().trim().min(1, "Customer name is required"),
 });
@@ -97,6 +105,7 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(
     null
   );
@@ -110,6 +119,8 @@ export default function OrdersPage() {
   const [agentNames, setAgentNames] = useState([]);
   const [commentDialogOpen, setCommentDialogOpen] = useState(false);
   const [itemToAdd, setItemToAdd] = useState<MenuItem | null>(null);
+
+  const [categorySearch, setCategorySearch] = useState("");
 
   const [ticketDialogOpen, setTicketDialogOpen] = useState(false);
 
@@ -204,6 +215,17 @@ export default function OrdersPage() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    if (categorySearch === "") {
+      setFilteredCategories(categories);
+    } else {
+      const filtered = categories.filter((category) =>
+        category.name.toLowerCase().includes(categorySearch.toLowerCase())
+      );
+      setFilteredCategories(filtered);
+    }
+  }, [categorySearch, categories]);
+
   const findMenuItem = useCallback(
     (id: number) => menuItems.find((item) => item.id === id),
     [menuItems]
@@ -212,11 +234,12 @@ export default function OrdersPage() {
   const addItemToOrder = async (menuItem: MenuItem, comments = null) => {
     if (!selectedOrder) return;
 
-    alert(
-      "Imprimiendo",
-      `Imprimiendo en ${menuItem.printLocations}`,
-      "success"
-    );
+    if (menuItem.printLocations.length > 0)
+      alert(
+        "Imprimiendo",
+        `Imprimiendo en ${menuItem.printLocations}`,
+        "success"
+      );
 
     // Find if item already exists in order
     const existingItem = selectedOrder.orderItems?.find(
@@ -224,6 +247,10 @@ export default function OrdersPage() {
     );
 
     if (existingItem) {
+      alert(
+        "Agregado",
+        "La cantidad del artículo en la orden ha sido incrementada"
+      );
       return updateItemQuantityOfOrder(existingItem, 1, comments);
     } else {
       const newItem: NewOrderItem = {
@@ -240,11 +267,28 @@ export default function OrdersPage() {
       });
 
       if (!response.ok) {
-        console.error("Failed to create order item");
+        const data = await response.json();
+
+        if (data.error && data.notEnoughStock) {
+          const errorList = (
+            <ul>
+              {data.notEnoughStock.map((stockItem: NotEnoughStockItem) => (
+                <li key={stockItem.name}>
+                  {stockItem.name} - {stockItem.stock.toFixed(2)}{" "}
+                  {stockItem.unit} disponibles, {stockItem.required.toFixed(2)}{" "}
+                  necesarios
+                </li>
+              ))}
+            </ul>
+          );
+
+          alert(data.error, errorList, "error");
+        } else console.error("Failed to update order item");
         return;
       }
 
       const data = await response.json();
+      alert("Agregado", "El artículo ha sido agregado a la orden");
       setSelectedOrder(data.order);
     }
   };
@@ -255,7 +299,7 @@ export default function OrdersPage() {
     comments: string | null = null
   ) => {
     if (!selectedOrder) return;
-    if (orderItem.quantity + quantity < 0) return;
+    if (orderItem.quantity + quantity <= 0) return handleDeleteItem(orderItem);
     const timestamp = new Date().toISOString();
 
     const response = await fetch(
@@ -277,7 +321,7 @@ export default function OrdersPage() {
       if (data.error && data.notEnoughStock) {
         const errorList = (
           <ul>
-            {data.notEnoughStock.map((stockItem: any) => (
+            {data.notEnoughStock.map((stockItem) => (
               <li key={stockItem.name}>
                 {stockItem.name} - {stockItem.stock.toFixed(2)} {stockItem.unit}{" "}
                 disponibles, {stockItem.required.toFixed(2)} necesarios
@@ -659,18 +703,15 @@ export default function OrdersPage() {
                           </span>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          {isElevatedUser && (
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-6 w-6"
-                              onClick={() =>
-                                updateItemQuantityOfOrder(item, -1)
-                              }
-                            >
-                              <MinusCircle className="h-4 w-4" />
-                            </Button>
-                          )}
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-6 w-6"
+                            onClick={() => updateItemQuantityOfOrder(item, -1)}
+                          >
+                            <MinusCircle className="h-4 w-4" />
+                          </Button>
+
                           <span>{item.quantity}</span>
                           <Button
                             size="icon"
@@ -854,18 +895,39 @@ export default function OrdersPage() {
             <h2 className="text-xl font-semibold">
               {selectedCategory ? selectedCategory.name : "Categorías"}
             </h2>
+
             {selectedCategory && (
               <Button variant="ghost" onClick={() => setSelectedCategory(null)}>
                 Volver
               </Button>
             )}
           </div>
+          {!selectedCategory && (
+            <div className="flex gap-1">
+              <Input
+                type="text"
+                value={categorySearch}
+                onChange={(e) => setCategorySearch(e.target.value)}
+                placeholder="Buscar categoría"
+              />
+              {categorySearch && (
+                <Button
+                  onClick={() => {
+                    setCategorySearch("");
+                  }}
+                  variant="outline"
+                >
+                  <X />
+                </Button>
+              )}
+            </div>
+          )}
         </div>
         <ScrollArea className="h-full mt-4">
           <div className="grid gap-2">
             {!selectedCategory
               ? // Show categories
-                categories.map((category) => (
+                filteredCategories.map((category) => (
                   <Card
                     key={category.id}
                     className="cursor-pointer hover:bg-accent"

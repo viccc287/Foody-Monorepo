@@ -18,6 +18,10 @@ export interface Order extends NewOrder {
   orderItems: OrderItem[];
 }
 
+export interface EnhancedOrder extends Order {
+  orderItems: OrderItem[];
+}
+
 export interface NewOrderItem {
   menuItemId: number;
   orderId: number;

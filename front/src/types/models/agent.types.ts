@@ -10,4 +10,10 @@ export interface Agent  {
     pin: string;
     role: string;
     isActive: boolean;
-  };
+};
+  
+export interface AgentFullName {
+  id: string;
+  name: string;
+  lastName: string;
+}

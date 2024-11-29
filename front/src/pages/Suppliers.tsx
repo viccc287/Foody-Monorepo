@@ -28,12 +28,13 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import useSortConfig from "@/lib/useSortConfig";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Edit2, PlusCircle, Trash2 } from "lucide-react";
+import { Edit2, PlusCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { NewSupplier, Supplier, SortableColumn } from "@/types";
+import AlertDialogTrash from "@/components/AlertDialogTrash";
+import { NewSupplier, SortableColumn, Supplier } from "@/types";
 
 const formSchema = z.object({
   name: z.string().trim().min(1, "Nombre requerido"),
@@ -317,13 +318,11 @@ export default function Suppliers() {
                     >
                       <Edit2 className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      onClick={() => handleDelete(supplier.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <AlertDialogTrash
+                      itemToDelete={supplier}
+                      handleDelete={handleDelete}
+                      description="¿Realmente desea eliminar este proveedor? Esta acción no se puede deshacer."
+                    />
                   </div>
                 </TableCell>
               </TableRow>

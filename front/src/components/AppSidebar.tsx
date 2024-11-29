@@ -1,4 +1,5 @@
 import {
+  Box,
   Boxes,
   ChevronUp,
   CupSoda,
@@ -9,9 +10,12 @@ import {
   ListTodo,
   PercentCircle,
   Shapes,
+  Tags,
+  Ticket,
   Truck,
   User,
   Users,
+  Utensils,
 } from "lucide-react";
 
 import {
@@ -45,7 +49,7 @@ import {
 import tokenService from "@/services/tokenService.ts";
 import { useEffect, useState } from "react";
 
-import logoUrl from "@/assets/yuru.jpg";
+import logoUrl from "/yuru.jpg";
 
 const items = [
   {
@@ -55,29 +59,30 @@ const items = [
     allowedRoles: ["manager", "cashier", "waiter", "cook"],
   },
   {
+    title: "Órdenes",
+    url: "orders",
+    icon: ListTodo,
+    allowedRoles: ["manager", "cashier", "waiter"],
+  },
+  {
     title: "Artículos del menú",
     url: "menu-items",
-    icon: CupSoda,
+    icon: Utensils,
     allowedRoles: ["manager"],
   },
   {
     title: "Inventario/Insumos",
     url: "stock",
-    icon: Boxes,
-    allowedRoles: ["manager"],
-  },
-  {
-    title: "Agentes",
-    url: "agents",
-    icon: Users,
+    icon: Box,
     allowedRoles: ["manager"],
   },
   {
     title: "Categorías",
     url: "categories",
-    icon: Shapes,
+    icon: Tags,
     allowedRoles: ["manager"],
   },
+
   {
     title: "Proveedores",
     url: "suppliers",
@@ -87,21 +92,21 @@ const items = [
   {
     title: "Promociones",
     url: "promos",
-    icon: PercentCircle,
+    icon: Ticket,
     allowedRoles: ["manager"],
   },
   {
-    title: "Órdenes",
-    url: "orders",
-    icon: ListTodo,
-    allowedRoles: ["manager", "cashier", "waiter"],
+    title: "Personal",
+    url: "agents",
+    icon: Users,
+    allowedRoles: ["manager"],
   },
   {
     title: "Histórico",
     url: "history",
     icon: History,
     allowedRoles: ["manager", "cashier"],
-  }
+  },
 ];
 
 export function AppSidebar() {
@@ -124,9 +129,7 @@ export function AppSidebar() {
     <TooltipProvider>
       <Sidebar collapsible="icon">
         <SidebarContent>
-     
           <SidebarGroup>
-            
             <SidebarGroupLabel>Restaurante</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>

@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import SortableTableHeadSet from "@/components/SortableTableHeadSet";
 
 import type { OrderItem, MenuItem } from "@/types";
+import { Badge } from "@/components/ui/badge";
 
 interface Order {
   id: number;
@@ -147,7 +148,9 @@ export default function History() {
                 <TableCell>{MXN.format(order.total)}</TableCell>
                 <TableCell>{MXN.format(order.tip)}</TableCell>
 
-                <TableCell>{statuses[order.status]}</TableCell>
+                <TableCell>
+                  <Badge>{statuses[order.status]}</Badge>
+                </TableCell>
                 <TableCell>
                   {new Date(order.createdAt).toLocaleString()}
                 </TableCell>

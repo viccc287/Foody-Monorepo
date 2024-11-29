@@ -1,15 +1,6 @@
+import AlertDialogTrash from "@/components/AlertDialogTrash";
 import SortableTableHeadSet from "@/components/SortableTableHeadSet";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -47,18 +38,11 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import useSortConfig from "@/lib/useSortConfig";
-import { Promo, SortableColumn, MenuItem, FormValues } from "@/types";
+import { FormValues, MenuItem, NewPromo, Promo, SortableColumn } from "@/types";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  DollarSign,
-  Edit2,
-  Percent,
-  PlusCircle,
-  Trash,
-  Trash2,
-} from "lucide-react";
+import { DollarSign, Edit2, Percent, PlusCircle, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
-import { set, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 const availabilitySchema = z.object({
@@ -129,11 +113,12 @@ const formSchema = z
   )
   .refine(
     (data) =>
+      data.always ||
       Object.values(data.availability).some(
         (day) => day.startTime && day.endTime
       ),
     {
-      message: "Al menos un día debe tener un horario definido.",
+      message: "Al menos un día debe tener un horario definido. Selecciona 'Siempre' si la promoción estará activa todo el tiempo",
       path: ["availability"],
     }
   )
@@ -142,7 +127,7 @@ const formSchema = z
       data.type !== "buy_x_get_y" ||
       (data.buy_quantity !== undefined &&
         data.pay_quantity !== undefined &&
-        data.buy_quantity > data.pay_quantity),
+        data.buy_quantity !== null && data.pay_quantity !== null && data.buy_quantity > data.pay_quantity),
     {
       message: "La cantidad que se paga debe ser menor que la que se lleva",
       path: ["pay_quantity"],
@@ -177,7 +162,6 @@ const fetchPromos = async (): Promise<Promo[]> => {
     promo.endDate = new Date(promo.endDate);
   });
 
-
   return data;
 };
 
@@ -188,7 +172,7 @@ const fetchMenuItems = async (): Promise<MenuItem[]> => {
 };
 
 const createPromo = async (values: FormValues): Promise<Promo> => {
-  const payload: Promo = {
+  const payload: NewPromo = {
     ...values,
   };
 
@@ -213,7 +197,6 @@ const createPromo = async (values: FormValues): Promise<Promo> => {
 
 const savePromo = async (promo: Promo): Promise<Promo> => {
   try {
-
     const response = await fetch(
       `${BASE_FETCH_URL}/promos-with-availability/${promo.id}`,
       {
@@ -320,7 +303,7 @@ export default function Promos() {
     startDate: new Date(new Date().setHours(0, 0, 0, 0)), // Primera hora de hoy
     endDate: new Date(new Date().setHours(24, 0, 0, 0)), // Primera hora de mañana
     type: "",
-    always: false,
+    always: true,
     isActive: true,
     name: "",
     availability: {
@@ -910,12 +893,15 @@ export default function Promos() {
                     `${promo.percentage}%`}
                 </TableCell>
                 <TableCell>{promo.always ? "Si" : "No"}</TableCell>
-                <TableCell
-                  className={promo.isActive ? "text-green-600" : "text-red-600"}
-                >
-                  {promo.isActive ? "Activa" : "Inactiva"}
-                  {new Date(promo.endDate) < new Date() && " (Expirada)"}
+                <TableCell>
+                  <Badge
+                    className={promo.isActive ? "bg-green-600" : "bg-red-600"}
+                  >
+                    {promo.isActive ? "Activa" : "Inactiva"}
+                    {new Date(promo.endDate) < new Date() && " (Expirada)"}
+                  </Badge>
                 </TableCell>
+
                 <TableCell>
                   <ul>
                     {Object.entries(promo.availability)
@@ -944,34 +930,10 @@ export default function Promos() {
                     >
                       <Edit2 className="h-4 w-4" />
                     </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="icon">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>
-                            Confirmar eliminación
-                          </AlertDialogTitle>
-                          <AlertDialogDescription>
-                            ¿Realmente desea eliminar esta promoción? Esta
-                            acción no se puede deshacer.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-
-                          <Button
-                            variant="destructive"
-                            onClick={() => handleDelete(promo.id)}
-                          >
-                            Confirmar
-                          </Button>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    <AlertDialogTrash
+                      itemToDelete={promo}
+                      handleDelete={handleDelete}
+                    />
                   </div>
                 </TableCell>
               </TableRow>
