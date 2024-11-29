@@ -218,7 +218,6 @@ const seed = () => {
     console.log("Admin seeded.");
   }
 
-  console.log("Seed completed!");
 };
 
 export default seed;
