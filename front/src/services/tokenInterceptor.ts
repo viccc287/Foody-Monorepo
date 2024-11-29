@@ -3,9 +3,9 @@ import tokenService from "@/services/tokenService.ts";
 export const setupFetchInterceptor = () => {
     const originalFetch = window.fetch;
 
-    window.fetch = async (url, options = {}) => {
+    window.fetch = async (url, options: RequestInit & { headers?: HeadersInit & { 'X-No-Auth'?: string } } = {}) => {
         if (options.headers && options.headers['X-No-Auth']) {
-            const { 'X-No-Auth': noAuth, ...restHeaders } = options.headers;
+            const {  ...restHeaders } = options.headers;
             return originalFetch(url, {
                 ...options,
                 headers: restHeaders,

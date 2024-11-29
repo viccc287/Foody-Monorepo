@@ -1,6 +1,6 @@
 
 import { Router } from "express";
-import Supplier from "../entities/SupplierEntities/Supplier";
+import Supplier from "../entities/SupplierEntities/Supplier.js";
 
 const router = Router();
 

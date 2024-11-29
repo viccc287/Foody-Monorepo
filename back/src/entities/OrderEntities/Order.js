@@ -1,5 +1,5 @@
-import db from "../../database/connection";
-import OrderItem from "./OrderItem";
+import db from "../../database/connection.js";
+import OrderItem from "./OrderItem.js";
 
 class Order {
   static tableName = '"Order"';
@@ -26,7 +26,7 @@ class Order {
     this.discountTotal = discountTotal || 0;
     this.total = total || 0;
     this.tip = tip || 0;
-    this.createdAt = createdAt || new Date().toISOString();
+    this.createdAt = createdAt || null;
     this.paymentMethod = paymentMethod || null;
     this.cancelledAt = cancelledAt || null;
     this.cancelReason = cancelReason || null;
@@ -39,6 +39,7 @@ class Order {
   static getAll() {
     const stmt = db.prepare(`SELECT * FROM ${this.tableName}`);
     const rows = stmt.all();
+
     return rows.map((row) => new Order(row));
   }
 
@@ -81,8 +82,8 @@ class Order {
 
   #createRecord() {
     const stmt = db.prepare(
-      `INSERT INTO ${Order.tableName} (customer, subtotal, discountTotal, total, tip, paymentMethod, status, claimedById, billedById, billedAt)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO ${Order.tableName} (customer, subtotal, discountTotal, total, tip, paymentMethod, status, claimedById, billedById, billedAt, createdAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)`
     );
     const result = stmt.run(
       this.customer,
@@ -94,7 +95,8 @@ class Order {
       this.status,
       this.claimedById,
       this.billedById,
-      this.billedAt
+      this.billedAt,
+      this.createdAt
     );
     this.id = result.lastInsertRowid;
     return this.id;
@@ -103,7 +105,7 @@ class Order {
   #updateRecord() {
     const stmt = db.prepare(
       `UPDATE ${Order.tableName}
-            SET customer = ?, subtotal = ?, discountTotal = ?, total = ?, tip = ?, paymentMethod = ?, cancelledAt = ?, cancelReason = ?, status = ?, claimedById = ?, billedById = ?, billedAt = ?
+            SET customer = ?, subtotal = ?, discountTotal = ?, total = ?, tip = ?, paymentMethod = ?, cancelledAt = ?, cancelReason = ?, status = ?, claimedById = ?, billedById = ?, billedAt = ?, createdAt = ?
             WHERE id = ?`
     );
     const result = stmt.run(
@@ -119,6 +121,7 @@ class Order {
       this.claimedById,
       this.billedById,
       this.billedAt,
+      this.createdAt,
       this.id
     );
     return result.changes > 0;

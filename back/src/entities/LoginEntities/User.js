@@ -1,4 +1,4 @@
-import db from "../../database/connection";
+import db from "../../database/connection.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 class User {

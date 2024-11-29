@@ -1,4 +1,4 @@
-export interface NewItem {
+export interface NewMenuItem {
   name: string;
   quantity: number;
   unit: string;
@@ -10,6 +10,28 @@ export interface NewItem {
   price: number;
 }
 
-export interface MenuItem extends NewItem {
+export interface MenuItem extends NewMenuItem {
   id: number;
+  ingredients: Ingredient[];
+
 }
+
+type StockItem = {
+  id: number;
+  name: string;
+  stock: number;
+  unit: string;
+  isActive: boolean;
+  categoryId: number;
+  supplierId: number;
+  cost: number;
+};
+
+type Ingredient = {
+  id: number;
+  menuItemId: number;
+  inventoryProductId: number;
+  quantityUsed: number;
+  stockItem: StockItem;
+};
+

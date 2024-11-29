@@ -38,7 +38,7 @@ interface AgentFullName {
   lastName: string;
 }
 
-const BASE_FETCH_URL = "http://localhost:3000/orders";
+const BASE_FETCH_URL = import.meta.env.VITE_SERVER_URL + "/orders";
 
 const MXN = new Intl.NumberFormat("es-MX", {
   style: "currency",
@@ -53,7 +53,9 @@ const fetchOrders = async (): Promise<Order[]> => {
 };
 
 const fetchAgentNames = async (): Promise<AgentFullName[]> => {
-  const response = await fetch("http://localhost:3000/agents/names");
+  const response = await fetch(
+    import.meta.env.VITE_SERVER_URL + "/agents/names"
+  );
 
   const data = await response.json();
   if (!response.ok)
@@ -62,7 +64,9 @@ const fetchAgentNames = async (): Promise<AgentFullName[]> => {
 };
 
 const fetchMenuItems = async (): Promise<MenuItem[]> => {
-  const response = await fetch("http://localhost:3000/menu/menu-items");
+  const response = await fetch(
+    import.meta.env.VITE_SERVER_URL + "/menu/menu-items"
+  );
   const data: MenuItem[] = await response.json();
   if (!response.ok) throw new Error("Error al cargar los artículos del menú");
   return data;
@@ -107,7 +111,7 @@ export default function History() {
 
     fetchAgentNames().then(setAgentNames);
     fetchMenuItems().then(setMenuItems);
-  }, []);
+  }, [toast]);
 
   const findAgentFullName = (id: string | null) => {
     if (!id) return "Desconocido";
@@ -118,7 +122,7 @@ export default function History() {
   const findMenuItemName = (id: number) => {
     const menuItem = menuItems.find((item) => item.id === id);
     return menuItem ? menuItem.name : "Desconocido";
-    };
+  };
 
   return (
     <div className="container mx-auto py-10">
@@ -149,12 +153,26 @@ export default function History() {
                 <TableCell>{MXN.format(order.tip)}</TableCell>
 
                 <TableCell>
-                  <Badge>{statuses[order.status]}</Badge>
+                  <Badge
+                    className={
+                      order.status === "active"
+                        ? "bg-blue-600"
+                        : order.status === "paid"
+                        ? "bg-green-600"
+                        : order.status === "cancelled"
+                        ? "bg-red-600"
+                        : "bg-yellow-600"
+                    }
+                  >
+                    {statuses[order.status] || "Desconocido"}
+                  </Badge>{" "}
                 </TableCell>
                 <TableCell>
                   {new Date(order.createdAt).toLocaleString()}
                 </TableCell>
-                <TableCell>{findAgentFullName(order.billedById)}</TableCell>
+                <TableCell>
+                  {order.billedById && findAgentFullName(order.billedById)}
+                </TableCell>
                 <TableCell>
                   <ul className=" list-disc">
                     {order.orderItems.map((item) => (

@@ -1,9 +1,9 @@
 import { Router } from "express";
-import Order from "../entities/OrderEntities/Order";
-import OrderItem from "../entities/OrderEntities/OrderItem";
-import MenuItem from "../entities/StockEntities/MenuItem";
-import Ingredient from "../entities/StockEntities/Ingredient";
-import StockItem from "../entities/StockEntities/StockItem";
+import Order from "../entities/OrderEntities/Order.js";
+import OrderItem from "../entities/OrderEntities/OrderItem.js";
+import MenuItem from "../entities/StockEntities/MenuItem.js";
+import Ingredient from "../entities/StockEntities/Ingredient.js";
+import StockItem from "../entities/StockEntities/StockItem.js";
 
 const router = Router();
 
@@ -15,7 +15,7 @@ const router = Router();
 // Get all orders
 router.get("/", (req, res) => {
   try {
-    const orders = Order.getAll();
+    const orders = Order.getAll();    
 
     // Enhance each order with items and calculations
     const enhancedOrders = orders.map((order) => {
@@ -41,26 +41,8 @@ router.get("/", (req, res) => {
         discountTotal,
       };
     });
-
+    
     res.json(enhancedOrders);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch orders. " + error.message });
-  }
-});
-
-router.get("/today", (req, res) => {
-  try {
-    const orders = Order.getAll();
-
-    const enhancedOrders = orders.map((order) => order.getEnhancedOrder());
-
-    const today = new Date().toISOString().split("T")[0];
-
-    const todayOrders = enhancedOrders.filter(
-      (order) => order.createdAt.split("T")[0] === today
-    );
-
-    res.json(todayOrders);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch orders. " + error.message });
   }
@@ -149,7 +131,9 @@ router.get("/:id", (req, res) => {
 router.post("/", (req, res) => {
   try {
     const order = new Order(req.body);
+    order.createdAt = new Date().toISOString();
     order.save();
+    
     res.status(201).json(order);
   } catch (error) {
     res.status(500).json({ error: "Failed to create order. " + error.message });
@@ -226,13 +210,14 @@ router.put("/:id/charge", async (req, res) => {
 });
 
 // Ruta para cancelar la orden
-router.post("/order/:id/cancel", async (req, res) => {
+router.put("/:id/cancel", async (req, res) => {
   try {
     const { id } = req.params;
     const { cancelReason } = req.body;
 
     const order = Order.getById(Number(id));
     if (!order) {
+      
       return res.status(404).json({ message: "Order not found" });
     }
 
@@ -242,11 +227,48 @@ router.post("/order/:id/cancel", async (req, res) => {
 
     order.save();
 
+    const orderItems = OrderItem.getByOrderId(Number(id));
+    orderItems.forEach((item) => {
+
+      const ingredients = Ingredient.getByMenuItemId(item.menuItemId);
+
+      for (const ingredient of ingredients) {
+        const stockItem = StockItem.getById(ingredient.inventoryProductId);
+        stockItem.stock += ingredient.quantityUsed * item.quantity;
+        stockItem.save();
+      }
+
+      item.delete();
+    });
+
     res.status(200).json({ message: "Order cancelled successfully", order });
   } catch (error) {
+    console.log(error);
+    
     res.status(500).json({ message: "Server error", error });
   }
 });
+
+router.put("/:id/unpay", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const order = Order.getById(Number(id));
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    order.status = "unpaid";
+    order.billedById = null;
+    order.billedAt = null;
+    order.save();
+
+    res.json({ message: "Order status updated successfully." });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update order status. " + error.message });
+  }
+}
+);
 
 // Add tip to order
 router.patch("/:id/tip", (req, res) => {

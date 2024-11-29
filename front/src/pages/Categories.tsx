@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -36,24 +36,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronsUpDown, Edit2, PlusCircle, Trash2 } from "lucide-react";
+import { Edit2, PlusCircle, Trash2 } from "lucide-react";
 
-import { Category, NewCategory, SortableColumn } from "@/types";
-import useSortConfig from "@/lib/useSortConfig";
+import ConfirmActionDialogButton from "@/components/ConfirmActionDialogButton";
 import SortableTableHeadSet from "@/components/SortableTableHeadSet";
-import AlertDialogTrash from "@/components/AlertDialogTrash";
+import useSortConfig from "@/lib/useSortConfig";
+import { Category, NewCategory, SortableColumn } from "@/types";
 
 const types = ["menu", "stock"];
 
@@ -63,7 +52,7 @@ const formSchema = z.object({
   type: z.string().trim().min(1, "Tipo requerido"),
 });
 
-const FETCH_BASE_URL = "http://localhost:3000/categories";
+const FETCH_BASE_URL = import.meta.env.VITE_SERVER_URL + "/categories";
 
 const fetchCategories = async (): Promise<Category[]> => {
   const response = await fetch(FETCH_BASE_URL);
@@ -116,7 +105,6 @@ export default function Categories() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const { sortConfig, sortItems: sortCategories } =
     useSortConfig<Category>(setCategories);
 
@@ -128,17 +116,6 @@ export default function Categories() {
       description,
       variant: status === "error" ? "destructive" : "default",
     });
-
-  const toggleSortOrder = useCallback(() => {
-    const newOrder = sortOrder === "asc" ? "desc" : "asc";
-    setSortOrder(newOrder);
-    setCategories((prevCategories) =>
-      [...prevCategories].sort((a, b) => {
-        const comparison = a.type.localeCompare(b.type);
-        return newOrder === "asc" ? comparison : -comparison;
-      })
-    );
-  }, [sortOrder]);
 
   const defaultValues: NewCategory = {
     name: "",
@@ -359,11 +336,16 @@ export default function Categories() {
                     >
                       <Edit2 className="h-4 w-4" />
                     </Button>
-                    <AlertDialogTrash
-                      itemToDelete={category}
-                      handleDelete={handleDelete}
-                      description="¿Realmente desea eliminar esta categoría? Esta acción no se puede deshacer. Se eliminarán todos los elementos asociados a esta categoría."
-                    />
+                    <ConfirmActionDialogButton
+                      onConfirm={() => handleDelete(category.id)}
+                      title="Eliminar categoría"
+                      description="¿Estás seguro de que deseas eliminar esta categoría? Se eliminarán todos los datos asociados a ella."
+                      variant="destructive"
+                      requireElevation
+                      size="icon"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </ConfirmActionDialogButton>
                   </div>
                 </TableCell>
               </TableRow>

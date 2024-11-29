@@ -1,6 +1,6 @@
 // FILE: Category.js
 
-import db from "../../database/connection";
+import db from "../../database/connection.js";
 
 class Category {
     static tableName = "Category";

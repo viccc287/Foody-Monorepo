@@ -1,4 +1,4 @@
-import AlertDialogTrash from "@/components/AlertDialogTrash";
+import ConfirmActionDialogButton from "@/components/ConfirmActionDialogButton";
 import SortableTableHeadSet from "@/components/SortableTableHeadSet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,8 +40,8 @@ import { useToast } from "@/hooks/use-toast";
 import useSortConfig from "@/lib/useSortConfig";
 import { FormValues, MenuItem, NewPromo, Promo, SortableColumn } from "@/types";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { DollarSign, Edit2, Percent, PlusCircle, Trash } from "lucide-react";
-import { useEffect, useState } from "react";
+import { DollarSign, Edit2, Percent, PlusCircle, Trash, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -118,7 +118,8 @@ const formSchema = z
         (day) => day.startTime && day.endTime
       ),
     {
-      message: "Al menos un día debe tener un horario definido. Selecciona 'Siempre' si la promoción estará activa todo el tiempo",
+      message:
+        "Al menos un día debe tener un horario definido. Selecciona 'Siempre' si la promoción estará activa todo el tiempo",
       path: ["availability"],
     }
   )
@@ -127,7 +128,9 @@ const formSchema = z
       data.type !== "buy_x_get_y" ||
       (data.buy_quantity !== undefined &&
         data.pay_quantity !== undefined &&
-        data.buy_quantity !== null && data.pay_quantity !== null && data.buy_quantity > data.pay_quantity),
+        data.buy_quantity !== null &&
+        data.pay_quantity !== null &&
+        data.buy_quantity > data.pay_quantity),
     {
       message: "La cantidad que se paga debe ser menor que la que se lleva",
       path: ["pay_quantity"],
@@ -148,12 +151,12 @@ const formSchema = z
     }
   );
 
-const MENUITEM_FETCH_URL = "http://localhost:3000/menu/menu-items";
-const BASE_FETCH_URL = "http://localhost:3000/promos";
+const MENUITEM_FETCH_URL = import.meta.env.VITE_SERVER_URL + "/menu/menu-items";
+const BASE_FETCH_URL = import.meta.env.VITE_SERVER_URL + "/promos";
 
 const fetchPromos = async (): Promise<Promo[]> => {
   const response = await fetch(
-    "http://localhost:3000/promos/promos-with-availability"
+    import.meta.env.VITE_SERVER_URL + "/promos/promos-with-availability"
   );
   const data: Promo[] = await response.json();
 
@@ -290,6 +293,14 @@ export default function Promos() {
   const [selectedType, setSelectedType] = useState("");
   const { toast } = useToast();
   const { sortConfig, sortItems: sortPromos } = useSortConfig<Promo>(setPromos);
+
+  const findMenuItemName = useCallback(
+    (id: number) => {
+      const menuItem = menuItems.find((item) => item.id === id);
+      return menuItem ? menuItem.name : "Desconocido";
+    },
+    [menuItems]
+  );
 
   const alert = (title: string, description: string, status?: string) =>
     toast({
@@ -853,7 +864,7 @@ export default function Promos() {
             {promos.map((promo) => (
               <TableRow key={promo.id}>
                 <TableCell>{promo.name}</TableCell>
-                <TableCell>{promo.menuItemId}</TableCell>
+                <TableCell>{findMenuItemName(promo.menuItemId!)}</TableCell>
                 <TableCell>
                   {new Date(promo.startDate).toLocaleString()}
                 </TableCell>
@@ -930,10 +941,16 @@ export default function Promos() {
                     >
                       <Edit2 className="h-4 w-4" />
                     </Button>
-                    <AlertDialogTrash
-                      itemToDelete={promo}
-                      handleDelete={handleDelete}
-                    />
+                    <ConfirmActionDialogButton
+                      onConfirm={() => handleDelete(promo.id)}
+                      title="Eliminar promoción"
+                      description="¿Estás seguro de que deseas eliminar esta promoción?"
+                      variant="destructive"
+                      requireElevation
+                      size="icon"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </ConfirmActionDialogButton>
                   </div>
                 </TableCell>
               </TableRow>

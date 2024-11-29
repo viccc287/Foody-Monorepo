@@ -28,12 +28,12 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import useSortConfig from "@/lib/useSortConfig";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Edit2, PlusCircle } from "lucide-react";
+import { Edit2, PlusCircle, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import AlertDialogTrash from "@/components/AlertDialogTrash";
+import ConfirmActionDialogButton from "@/components/ConfirmActionDialogButton";
 import { NewSupplier, SortableColumn, Supplier } from "@/types";
 
 const formSchema = z.object({
@@ -43,7 +43,7 @@ const formSchema = z.object({
   address: z.string().trim().optional(),
 });
 
-const FETCH_BASE_URL = "http://localhost:3000/suppliers";
+const FETCH_BASE_URL = import.meta.env.VITE_SERVER_URL + "/suppliers";
 
 const fetchSuppliers = async (): Promise<Supplier[]> => {
   const response = await fetch(FETCH_BASE_URL);
@@ -85,12 +85,12 @@ const deleteSupplier = async (id: number): Promise<void> => {
 };
 
 const tableHeaderColumns: SortableColumn<Supplier>[] = [
-    { key: "id", label: "ID" },
-    { key: "name", label: "Nombre" },
-    { key: "phone", label: "Teléfono" },
-    { key: "email", label: "Email" },
-    { key: "address", label: "Dirección" },
-  ];
+  { key: "id", label: "ID" },
+  { key: "name", label: "Nombre" },
+  { key: "phone", label: "Teléfono" },
+  { key: "email", label: "Email" },
+  { key: "address", label: "Dirección" },
+];
 
 export default function Suppliers() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -318,11 +318,16 @@ export default function Suppliers() {
                     >
                       <Edit2 className="h-4 w-4" />
                     </Button>
-                    <AlertDialogTrash
-                      itemToDelete={supplier}
-                      handleDelete={handleDelete}
-                      description="¿Realmente desea eliminar este proveedor? Esta acción no se puede deshacer."
-                    />
+                    <ConfirmActionDialogButton
+                      onConfirm={() => handleDelete(supplier.id)}
+                      title="Eliminar proveedor"
+                      description="¿Estás seguro de que deseas eliminar este proveedor?"
+                      variant="destructive"
+                      requireElevation
+                      size="icon"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </ConfirmActionDialogButton>
                   </div>
                 </TableCell>
               </TableRow>

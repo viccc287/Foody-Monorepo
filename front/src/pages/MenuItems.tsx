@@ -1,21 +1,5 @@
-import { useState, useEffect } from "react";
-import {
-  PlusCircle,
-  Pencil,
-  Trash,
-  DollarSign,
-  Edit2,
-  Trash2,
-} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -34,7 +18,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -42,55 +25,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useForm } from "react-hook-form";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { DollarSign, Edit2, PlusCircle, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
 import * as z from "zod";
 
 import { useToast } from "@/hooks/use-toast";
 
-import type { SortableColumn } from "@/types";
-import useSortConfig from "@/lib/useSortConfig";
 import SortableTableHeadSet from "@/components/SortableTableHeadSet";
-import AlertDialogTrash from "@/components/AlertDialogTrash";
 import { Badge } from "@/components/ui/badge";
+import useSortConfig from "@/lib/useSortConfig";
+import type { SortableColumn } from "@/types";
 
-type StockItem = {
-  id: number;
-  name: string;
-  stock: number;
-  unit: string;
-  isActive: boolean;
-  categoryId: number;
-  supplierId: number;
-  cost: number;
-};
-
-type Ingredient = {
-  id: number;
-  menuItemId: number;
-  inventoryProductId: number;
-  quantityUsed: number;
-  stockItem: StockItem;
-};
+import ConfirmActionDialogButton from "@/components/ConfirmActionDialogButton";
+import type { MenuItem, StockItem } from "@/types";
 
 type Category = {
   id: number;
   name: string;
   description: string;
   type: string;
-};
-
-type MenuItem = {
-  id: number;
-  name: string;
-  quantity: number;
-  unit: string;
-  isActive: boolean;
-  categoryId: number;
-  printLocations: string[];
-  variablePrice: boolean;
-  price: number;
-  ingredients: Ingredient[];
 };
 
 const printLocations = ["Cocina", "Caja", "Barra"];
@@ -123,8 +86,9 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-const BASE_FETCH_URL = "http://localhost:3000/menu";
-const CATEGORY_FETCH_URL = "http://localhost:3000/categories?type=menu";
+const BASE_FETCH_URL = import.meta.env.VITE_SERVER_URL + "/menu";
+const CATEGORY_FETCH_URL =
+  import.meta.env.VITE_SERVER_URL + "/categories?type=menu";
 
 const fetchItems = async (): Promise<MenuItem[]> => {
   const response = await fetch(`${BASE_FETCH_URL}/menu-items-with-ingredients`);
@@ -148,7 +112,9 @@ const fetchCategories = async (): Promise<Category[]> => {
   return data;
 };
 
-const saveItem = async (item: MenuItem): Promise<MenuItem> => {
+const saveItem = async (
+  item: FormValues & { id: number }
+): Promise<MenuItem> => {
   const response = await fetch(`${BASE_FETCH_URL}/menu-items/${item.id}`, {
     method: "PUT",
     headers: {
@@ -453,7 +419,7 @@ export default function MenuItems() {
                   <FormField
                     control={form.control}
                     name="printLocations"
-                    render={({ field }) => (
+                    render={() => (
                       <FormItem>
                         <div className="mb-4">
                           <FormLabel>Imprimir en</FormLabel>
@@ -699,11 +665,16 @@ export default function MenuItems() {
                     >
                       <Edit2 className="h-4 w-4" />
                     </Button>
-                    <AlertDialogTrash
-                      itemToDelete={item}
-                      handleDelete={handleDelete}
-                      description="¿Realmente desea eliminar este artículo? Esta acción no se puede deshacer."
-                    />
+                    <ConfirmActionDialogButton
+                      onConfirm={() => handleDelete(item.id)}
+                      title="Eliminar artículo"
+                      description="¿Estás seguro de que deseas eliminar este artículo?"
+                      variant="destructive"
+                      requireElevation
+                      size="icon"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </ConfirmActionDialogButton>
                   </div>
                 </TableCell>
               </TableRow>

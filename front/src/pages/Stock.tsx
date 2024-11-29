@@ -40,15 +40,15 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 
+import ConfirmActionDialogButton from "@/components/ConfirmActionDialogButton";
+import { Badge } from "@/components/ui/badge";
 import type {
+  Category,
+  NewStockItem,
   SortableColumn,
   StockItem,
-  NewStockItem,
-  Category,
   Supplier,
 } from "@/types";
-import AlertDialogTrash from "@/components/AlertDialogTrash";
-import { Badge } from "@/components/ui/badge";
 
 const units = ["pieza", "vaso", "botella", "cartón", "kg", "g", "l", "ml"];
 
@@ -67,9 +67,10 @@ const formSchema = z.object({
     .multipleOf(0.01, "El costo debe ser múltiplo de 0.01"),
 });
 
-const BASE_FETCH_URL = "http://localhost:3000/menu/stock-items";
-const CATEGORY_FETCH_URL = "http://localhost:3000/categories?type=stock";
-const SUPPLIER_FETCH_URL = "http://localhost:3000/suppliers";
+const BASE_FETCH_URL = import.meta.env.VITE_SERVER_URL + "/menu/stock-items";
+const CATEGORY_FETCH_URL =
+  import.meta.env.VITE_SERVER_URL + "/categories?type=stock";
+const SUPPLIER_FETCH_URL = import.meta.env.VITE_SERVER_URL + "/suppliers";
 
 const fetchItems = async (): Promise<StockItem[]> => {
   const response = await fetch(BASE_FETCH_URL);
@@ -495,11 +496,16 @@ export default function Stock() {
                     >
                       <Edit2 className="h-4 w-4" />
                     </Button>
-                    <AlertDialogTrash
-                      itemToDelete={item}
-                      handleDelete={handleDelete}
-                      description="¿Realmente desea eliminar este artículo? Esta acción no se puede deshacer."
-                    />
+                    <ConfirmActionDialogButton
+                      onConfirm={() => handleDelete(item.id)}
+                      title="Eliminar artículo"
+                      description="¿Estás seguro de que deseas eliminar este artículo?"
+                      variant="destructive"
+                      requireElevation
+                      size='icon'
+                    >
+                      <Trash2 className="h-4 w-4"  />
+                    </ConfirmActionDialogButton>
                   </div>
                 </TableCell>
               </TableRow>

@@ -1,7 +1,7 @@
 import { Router } from "express";
-import MenuItem from "../entities/StockEntities/MenuItem";
-import Ingredient from "../entities/StockEntities/Ingredient";
-import StockItem from "../entities/StockEntities/StockItem";
+import MenuItem from "../entities/StockEntities/MenuItem.js";
+import Ingredient from "../entities/StockEntities/Ingredient.js";
+import StockItem from "../entities/StockEntities/StockItem.js";
 
 const router = Router();
 

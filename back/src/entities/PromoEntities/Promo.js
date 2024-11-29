@@ -1,5 +1,5 @@
-import db from "../../database/connection";
-import RecurrentDate from "./RecurrentDate"; // Import the RecurrentDate class
+import db from "../../database/connection.js";
+import RecurrentDate from "./RecurrentDate.js"; // Import the RecurrentDate class
 
 class Promo {
   static tableName = "Promo";

@@ -1,14 +1,14 @@
-import db from "./connection";
+import db from "./connection.js";
 
 const seed = () => {
-  // Verificador genérico para tablas
+
   const isTableEmpty = (tableName) => {
     const stmt = db.prepare(`SELECT COUNT(*) as count FROM ${tableName}`);
     const result = stmt.get();
     return result.count === 0;
   };
 
-  // Seed para Category
+/*   // Seed para Category
   if (isTableEmpty("Category")) {
     console.log("Seed data: Adding initial categories...");
     const categories = [
@@ -175,46 +175,22 @@ const seed = () => {
     });
 
     console.log("Stock items seeded.");
-  }
+  } */
 
   // Seed para Agent
   if (isTableEmpty("Agent")) {
-    console.log("Seed data: Adding initial agents...");
+    console.log("Seed data: Adding initial agent...");
     const agents = [
       {
-        name: "Carlos",
-        lastName: "Hernández",
+        name: "Admin",
+        lastName: "Admin",
         image: "",
-        address: "Calle Principal 123, Ciudad A",
-        phone: "555-112-3344",
+        address: "",
+        phone: "1234567890",
         rfc: "CHH123456789",
-        email: "carlos.hernandez@restaurante.com",
+        email: "admin@admin.com",
         pin: "1234",
         role: "manager",
-        isActive: true,
-      },
-      {
-        name: "Ana",
-        lastName: "López",
-        image: "",
-        address: "Avenida Central 456, Ciudad B",
-        phone: "555-223-4455",
-        rfc: "ALO987654321",
-        email: "ana.lopez@restaurante.com",
-        pin: "5678",
-        role: "cook",
-        isActive: true,
-      },
-      {
-        name: "Luis",
-        lastName: "Martínez",
-        image: "",
-        address: "Calle Secundaria 789, Ciudad C",
-        phone: "555-334-5566",
-        rfc: "LUM876543210",
-        email: "luis.martinez@restaurante.com",
-        pin: "9012",
-        role: "waiter",
         isActive: true,
       },
     ];
@@ -239,7 +215,7 @@ const seed = () => {
       );
     });
 
-    console.log("Agents seeded.");
+    console.log("Admin seeded.");
   }
 
   console.log("Seed completed!");

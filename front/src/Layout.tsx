@@ -31,7 +31,14 @@ const ROUTE_ROLES = {
   "/orders": ["manager", "cashier", "waiter", "cook"],
 };
 
-function RoleBasedRoute({ children, path }) {
+import { ReactNode } from "react";
+
+interface RoleBasedRouteProps {
+  children: ReactNode;
+  path: keyof typeof ROUTE_ROLES;
+}
+
+function RoleBasedRoute({ children, path }: RoleBasedRouteProps) {
   const userInfo = TokenService.getUserInfo();
   const userRole = userInfo?.role || "";
 
@@ -42,7 +49,7 @@ function RoleBasedRoute({ children, path }) {
   return children;
 }
 
-function PrivateRoute({ children }) {
+function PrivateRoute({ children }: { children: ReactNode }) {
   const userInfo = TokenService.getUserInfo();
   return userInfo ? children : <Navigate to="/login" replace />;
 }
@@ -56,7 +63,7 @@ function AppLayout() {
     <SidebarProvider>
       <Toaster />
       {!isLoginRoute && userInfo && <AppSidebar />}
-      <main className="w-full p-4 h-[100svh] overflow-auto">
+      <main className="w-full h-[100svh] overflow-auto p-6">
         <div className="flex flex-col h-full ">
           {!isLoginRoute && userInfo && <SidebarTrigger />}
           <Routes>

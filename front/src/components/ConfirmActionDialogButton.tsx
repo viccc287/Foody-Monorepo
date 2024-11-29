@@ -1,38 +1,40 @@
-// AlertDialogDelete.tsx
-import { useEffect, useState } from "react";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Button, ButtonProps } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useEffect, useState } from "react";
 
 const fetchConfig = () => fetch(import.meta.env.VITE_SERVER_URL + "/config");
 
-interface AlertDialogDeleteProps {
-  open: boolean;
-  setOpen: (open: boolean) => void;
-  onConfirm: () => void;
-  onCancel: () => void;
+interface ConfirmActionDialogButtonProps extends ButtonProps {
+  title?: string;
   description?: string;
+  variant?: ButtonProps["variant"];
+  onConfirm: () => void;
+  children: React.ReactNode;
   requireElevation?: boolean;
 }
 
-function AlertDialogDelete({
-  open,
+function ConfirmActionDialogButton({
+  title = "¿Estás seguro?",
+  description,
   onConfirm,
-  onCancel,
-  setOpen,
-  description = "",
-  requireElevation = true,
-}: AlertDialogDeleteProps) {
+  children,
+  variant = "default",
+  requireElevation = false,
+  ...props
+}: ConfirmActionDialogButtonProps) {
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
+  const [open, setOpen] = useState(false);
   const [validPin, setValidPin] = useState("");
 
   useEffect(() => {
@@ -59,6 +61,7 @@ function AlertDialogDelete({
         setError("PIN inválido");
       }
     } else {
+      setOpen(false);
       onConfirm();
     }
   };
@@ -66,23 +69,25 @@ function AlertDialogDelete({
   const handleCancel = () => {
     setPin("");
     setError("");
-    onCancel();
   };
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <Button variant={variant} {...props}>
+          {children}
+        </Button>
+      </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-          <AlertDialogDescription>
-            {description || "Vas a eliminar este elemento"}
-          </AlertDialogDescription>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         {requireElevation && (
           <div className="py-4">
             <Input
               type="password"
-              placeholder="Ingresa el PIN"
+              placeholder="Ingresa el PIN de seguridad"
               value={pin}
               onChange={(e) => {
                 setPin(e.target.value);
@@ -96,16 +101,17 @@ function AlertDialogDelete({
         )}
         <AlertDialogFooter>
           <AlertDialogCancel onClick={handleCancel}>Cancelar</AlertDialogCancel>
-          <AlertDialogAction
+          <Button
             onClick={handleConfirm}
             disabled={requireElevation && pin.length !== 4}
+            variant={variant}
           >
             Continuar
-          </AlertDialogAction>
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   );
 }
 
-export default AlertDialogDelete;
+export default ConfirmActionDialogButton;

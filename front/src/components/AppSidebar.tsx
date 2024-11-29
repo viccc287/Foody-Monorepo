@@ -1,21 +1,15 @@
 import {
   Box,
-  Boxes,
   ChevronUp,
-  CupSoda,
-  Handshake,
+  ClipboardList,
   History,
   Home,
-  List,
-  ListTodo,
-  PercentCircle,
-  Shapes,
   Tags,
   Ticket,
   Truck,
   User,
   Users,
-  Utensils,
+  Utensils
 } from "lucide-react";
 
 import {
@@ -34,13 +28,6 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -49,9 +36,9 @@ import {
 import tokenService from "@/services/tokenService.ts";
 import { useEffect, useState } from "react";
 
-import logoUrl from "/yuru.jpg";
+import logoUrl from "/restaurantlogo.jpg";
 
-const items = [
+const mainItems = [
   {
     title: "Dashboard",
     url: "/",
@@ -61,9 +48,12 @@ const items = [
   {
     title: "Órdenes",
     url: "orders",
-    icon: ListTodo,
+    icon: ClipboardList,
     allowedRoles: ["manager", "cashier", "waiter"],
   },
+];
+
+const managementItems = [
   {
     title: "Artículos del menú",
     url: "menu-items",
@@ -82,7 +72,6 @@ const items = [
     icon: Tags,
     allowedRoles: ["manager"],
   },
-
   {
     title: "Proveedores",
     url: "suppliers",
@@ -101,6 +90,9 @@ const items = [
     icon: Users,
     allowedRoles: ["manager"],
   },
+];
+
+const historyItems = [
   {
     title: "Histórico",
     url: "history",
@@ -126,73 +118,104 @@ export function AppSidebar() {
   };
 
   return (
-    <TooltipProvider>
-      <Sidebar collapsible="icon">
-        <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupLabel>Restaurante</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {items.map(
-                  (item) =>
-                    item.allowedRoles.includes(userInfo?.role) && (
-                      <Tooltip key={item.title}>
-                        <TooltipTrigger>
-                          <SidebarMenuItem>
-                            <SidebarMenuButton asChild>
-                              <Link to={item.url}>
-                                <item.icon />
-                                <span>{item.title}</span>
-                              </Link>
-                            </SidebarMenuButton>
-                          </SidebarMenuItem>
-                        </TooltipTrigger>
-                        <TooltipContent side="right">
-                          {item.title}
-                        </TooltipContent>
-                      </Tooltip>
-                    )
-                )}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
-        <SidebarFooter>
-          {open && (
-            <img
-              className="aspect-square p-4 rounded-[25px] size-36"
-              src={logoUrl}
-            />
-          )}
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <SidebarMenuButton>
-                    <User />
-                    <span>
-                      {userInfo?.name} {userInfo?.lastName}
-                    </span>
-                    <ChevronUp className="ml-auto" />
-                  </SidebarMenuButton>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  side="top"
-                  className="w-[--radix-popper-anchor-width]"
-                >
-                  <DropdownMenuItem>
-                    <span>Perfil de agente</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleLogout}>
-                    <span>Cerrar sesión</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarFooter>
-        <SidebarRail />
-      </Sidebar>
-    </TooltipProvider>
+    <Sidebar collapsible="icon">
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Restaurante</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {mainItems.map(
+                (item) =>
+                  item.allowedRoles.includes(userInfo?.role ?? "") && (
+                    <SidebarMenuItem key={item.url}>
+                      <SidebarMenuButton asChild>
+                        <Link to={item.url}>
+                          <item.icon />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )
+              )}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>Gestión</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {managementItems.map(
+                (item) =>
+                  item.allowedRoles.includes(userInfo?.role ?? "") && (
+                    <SidebarMenuItem key={item.url}>
+                      <SidebarMenuButton asChild>
+                        <Link to={item.url}>
+                          <item.icon />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )
+              )}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>Histórico</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {historyItems.map(
+                (item) =>
+                  item.allowedRoles.includes(userInfo?.role ?? "") && (
+                    <SidebarMenuItem key={item.url}>
+                      <SidebarMenuButton asChild>
+                        <Link to={item.url}>
+                          <item.icon />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )
+              )}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+      <SidebarFooter>
+        {open && (
+          <img
+            className="aspect-square p-4 rounded-[25px] size-36"
+            src={logoUrl}
+          />
+        )}
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton>
+                  <User />
+                  <span>
+                    {userInfo?.name} {userInfo?.lastName}
+                  </span>
+                  <ChevronUp className="ml-auto" />
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                side="top"
+                className="w-[--radix-popper-anchor-width]"
+              >
+                <DropdownMenuItem>
+                  <span>Perfil de agente</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout}>
+                  <span>Cerrar sesión</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+      <SidebarRail />
+    </Sidebar>
   );
 }

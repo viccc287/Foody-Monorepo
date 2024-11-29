@@ -1,4 +1,4 @@
-import db from "../../database/connection";
+import db from "../../database/connection.js";
 
 class StockItem {
   static tableName = "StockItem";

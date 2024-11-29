@@ -89,20 +89,20 @@ const formSchema = z.object({
 });
 
 const roles = [
-  { name: "Gerente", value: "manager" },
+  { name: "Administrador", value: "manager" },
   { name: "Cajero", value: "cashier" },
   { name: "Mesero", value: "waiter" },
   { name: "Cocinero", value: "cook" },
 ];
 
 const fetchAgents = async (): Promise<Agent[]> => {
-  const response = await fetch("http://localhost:3000/agents");
+  const response = await fetch(import.meta.env.VITE_SERVER_URL + "/agents");
   const data: Agent[] = await response.json();
   return data;
 };
 
 const createAgent = async (values: FormValues): Promise<Agent> => {
-  const response = await fetch("http://localhost:3000/agents", {
+  const response = await fetch(import.meta.env.VITE_SERVER_URL + "/agents", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -117,13 +117,16 @@ const createAgent = async (values: FormValues): Promise<Agent> => {
 };
 
 const saveAgent = async (agent: Agent): Promise<Agent> => {
-  const response = await fetch("http://localhost:3000/agents/" + agent.id, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(agent),
-  });
+  const response = await fetch(
+    import.meta.env.VITE_SERVER_URL + "/agents/" + agent.id,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(agent),
+    }
+  );
 
   if (!response.ok) throw new Error("Error al guardar el agente");
 
@@ -171,10 +174,13 @@ export default function AgentPage() {
     const formData = new FormData();
     formData.append("image", file);
 
-    const response = await fetch("http://localhost:3000/agents/upload-image", {
-      method: "POST",
-      body: formData,
-    });
+    const response = await fetch(
+      import.meta.env.VITE_SERVER_URL + "/agents/upload-image",
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
 
     if (!response.ok) {
       throw new Error("Failed to upload image");
@@ -198,10 +204,7 @@ export default function AgentPage() {
           image: imageUrl,
         });
         setAgents([...agents, newAgent]);
-        alert(
-          "Agente creado",
-          "El agente ha sido creado correctamente"
-        );
+        alert("Agente creado", "El agente ha sido creado correctamente");
       } else {
         const updatedAgent = await saveAgent({
           ...values,
@@ -298,6 +301,7 @@ export default function AgentPage() {
                   <FormField
                     control={form.control}
                     name="image"
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
                     render={({ field: { value, onChange, ...field } }) => (
                       <FormItem>
                         <FormLabel>Imagen</FormLabel>

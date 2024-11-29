@@ -1,10 +1,10 @@
 import { Router } from "express";
-import OrderItem from "../entities/OrderEntities/OrderItem";
-import Promo from "../entities/PromoEntities/Promo";
-import MenuItem from "../entities/StockEntities/MenuItem";
-import Order from "../entities/OrderEntities/Order";
-import Ingredient from "../entities/StockEntities/Ingredient";
-import StockItem from "../entities/StockEntities/StockItem";
+import OrderItem from "../entities/OrderEntities/OrderItem.js";
+import Promo from "../entities/PromoEntities/Promo.js";
+import MenuItem from "../entities/StockEntities/MenuItem.js";
+import Order from "../entities/OrderEntities/Order.js";
+import Ingredient from "../entities/StockEntities/Ingredient.js";
+import StockItem from "../entities/StockEntities/StockItem.js";
 
 const router = Router();
 

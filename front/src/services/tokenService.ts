@@ -7,10 +7,10 @@ interface TokenPayload {
     email: string;
     name: string;
     lastName: string;
-    id: string;
+    id: number;
     iat: number;
     exp: number;
-    [key: string]: any;
+    [key: string]: string | number;
 }
 
 class TokenService {

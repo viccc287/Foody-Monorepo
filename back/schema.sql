@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS "Order" (
     discountTotal DECIMAL DEFAULT 0,
     total DECIMAL NOT NULL,
     tip DECIMAL DEFAULT 0,
-    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    createdAt DATETIME,
     paymentMethod TEXT CHECK (paymentMethod IN ('cash', 'card')),
     cancelledAt DATETIME,
     cancelReason TEXT,

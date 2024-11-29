@@ -13,7 +13,7 @@ export interface Agent  {
 };
   
 export interface AgentFullName {
-  id: string;
+  id: number;
   name: string;
   lastName: string;
 }

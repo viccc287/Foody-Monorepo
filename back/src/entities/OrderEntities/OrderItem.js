@@ -1,7 +1,6 @@
-import db from "../../database/connection";
-import MenuItem from "../StockEntities/MenuItem";
-import Promo from "../PromoEntities/Promo";
-import Order from "./Order";
+import db from "../../database/connection.js";
+import MenuItem from "../StockEntities/MenuItem.js";
+import Promo from "../PromoEntities/Promo.js";
 
 class OrderItem {
   static tableName = "OrderItem";

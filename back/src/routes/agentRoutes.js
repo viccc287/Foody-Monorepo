@@ -1,5 +1,5 @@
 import { Router } from "express";
-import db from "../database/connection";
+import db from "../database/connection.js";
 import multer from "multer";
 import path from "path";
 import fs from "fs";

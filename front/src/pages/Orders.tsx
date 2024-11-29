@@ -1,25 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  Edit2,
-  MinusCircle,
-  PlusCircle,
-  RefreshCcw,
-  Trash2,
-  X,
-} from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { set, useForm } from "react-hook-form";
+import { MinusCircle, PlusCircle, RefreshCcw, Trash2, X } from "lucide-react";
+import { ReactNode, useCallback, useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
 import * as z from "zod";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -29,14 +15,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableFooter,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   Form,
   FormControl,
   FormField,
@@ -44,22 +22,33 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
-import {
-  MenuItem,
-  Order,
-  NewOrder,
-  OrderItem,
-  NewOrderItem,
-  Category,
-} from "@/types";
+import AlertDialogDelete from "@/components/AlertDialogDelete";
+import ConfirmActionDialogButton from "@/components/ConfirmActionDialogButton";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Badge } from "@/components/ui/badge";
 import TokenService from "@/services/tokenService";
-import AlertDialogDelete from "@/components/AlertDialogDelete";
+import {
+  AgentFullName,
+  Category,
+  MenuItem,
+  NewOrder,
+  NewOrderItem,
+  Order,
+  OrderItem,
+} from "@/types";
 
 interface NotEnoughStockItem {
   name: string;
@@ -86,15 +75,16 @@ const commentSchema = z.object({
 
 const adminRoles = ["manager", "cashier"];
 
-const ORDER_BASE_FETCH_URL = "http://localhost:3000/orders";
+const ORDER_BASE_FETCH_URL = import.meta.env.VITE_SERVER_URL + "/orders";
 
 const ORDER_WAITER_FETCH_URL =
-  "http://localhost:3000/orders/active-orders-by-agent";
+  import.meta.env.VITE_SERVER_URL + "/orders/active-orders-by-agent";
 
-const ORDER_ITEM_FETCH_URL = "http://localhost:3000/order-items";
-const MENUITEM_FETCH_URL = "http://localhost:3000/menu/menu-items";
-const CATEGORIES_FETCH_URL = "http://localhost:3000/categories?type=menu";
-const AGENTS_FETCH_URL = "http://localhost:3000/agents/names";
+const ORDER_ITEM_FETCH_URL = import.meta.env.VITE_SERVER_URL + "/order-items";
+const MENUITEM_FETCH_URL = import.meta.env.VITE_SERVER_URL + "/menu/menu-items";
+const CATEGORIES_FETCH_URL =
+  import.meta.env.VITE_SERVER_URL + "/categories?type=menu";
+const AGENTS_FETCH_URL = import.meta.env.VITE_SERVER_URL + "/agents/names";
 
 const MXN = new Intl.NumberFormat("es-MX", {
   style: "currency",
@@ -110,13 +100,12 @@ export default function OrdersPage() {
     null
   );
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [loading, setLoading] = useState(true);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
   const [tipDialogOpen, setTipDialogOpen] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<OrderItem | null>(null);
   const [isElevatedUser, setIsElevatedUser] = useState(false);
-  const [agentNames, setAgentNames] = useState([]);
+  const [agentNames, setAgentNames] = useState<AgentFullName[]>([]);
   const [commentDialogOpen, setCommentDialogOpen] = useState(false);
   const [itemToAdd, setItemToAdd] = useState<MenuItem | null>(null);
 
@@ -126,9 +115,11 @@ export default function OrdersPage() {
 
   const [userInfo, setUserInfo] = useState(TokenService.getUserInfo());
 
+  const [orderCharged, setOrderCharged] = useState<Order | null>(null);
+
   const { toast } = useToast();
 
-  const alert = (title: string, description: string, status?: string) =>
+  const alert = (title: string, description: ReactNode, status?: string) =>
     toast({
       title,
       description,
@@ -160,7 +151,7 @@ export default function OrdersPage() {
   useEffect(() => {
     const updatedUserInfo = TokenService.getUserInfo();
     setUserInfo(updatedUserInfo);
-    setIsElevatedUser(adminRoles.includes(updatedUserInfo?.role));
+    setIsElevatedUser(adminRoles.includes(updatedUserInfo?.role ?? ""));
   }, []);
 
   const fetchOrders = async () => {
@@ -176,7 +167,7 @@ export default function OrdersPage() {
 
       if (selectedOrder) {
         const updatedOrder = ordersData.find(
-          (order) => order.id === selectedOrder.id
+          (order: Order) => order.id === selectedOrder.id
         );
         setSelectedOrder(updatedOrder);
       }
@@ -185,6 +176,7 @@ export default function OrdersPage() {
       // Consider adding error state and UI feedback
     }
   };
+
 
   useEffect(() => {
     fetchOrders();
@@ -207,8 +199,6 @@ export default function OrdersPage() {
       } catch (error) {
         console.error("Error loading data:", error);
         // Consider adding error state and UI feedback
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -231,7 +221,10 @@ export default function OrdersPage() {
     [menuItems]
   );
 
-  const addItemToOrder = async (menuItem: MenuItem, comments = null) => {
+  const addItemToOrder = async (
+    menuItem: MenuItem,
+    comments: string | null = null
+  ) => {
     if (!selectedOrder) return;
 
     if (menuItem.printLocations.length > 0)
@@ -321,7 +314,7 @@ export default function OrdersPage() {
       if (data.error && data.notEnoughStock) {
         const errorList = (
           <ul>
-            {data.notEnoughStock.map((stockItem) => (
+            {data.notEnoughStock.map((stockItem: NotEnoughStockItem) => (
               <li key={stockItem.name}>
                 {stockItem.name} - {stockItem.stock.toFixed(2)} {stockItem.unit}{" "}
                 disponibles, {stockItem.required.toFixed(2)} necesarios
@@ -343,10 +336,15 @@ export default function OrdersPage() {
   };
 
   const chargeOrder = async () => {
-    console.log("chargingOrder", selectedOrder);
-    console.log("userInfo", userInfo);
 
     if (!selectedOrder) return;
+
+    if (!selectedOrder.orderItems || selectedOrder.orderItems.length === 0) {
+      alert("Error", "No se puede cobrar una orden sin artículos", "error");
+      return;
+    }
+
+    setOrderCharged(selectedOrder);
 
     setTicketDialogOpen(true);
 
@@ -403,12 +401,37 @@ export default function OrdersPage() {
     setSelectedOrder(updatedOrder);
   };
 
+  const cancelOrder = async () => {
+    if (!selectedOrder) return;
+
+    const response = await fetch(
+      `${ORDER_BASE_FETCH_URL}/${selectedOrder.id}/cancel`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "cancelled",
+          cancelReason: "Cancelada por el usuario",
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      console.error("Failed to cancel order");
+      return;
+    }
+
+    setOrders(orders.filter((order) => order.id !== selectedOrder.id));
+
+    setSelectedOrder(null);
+  };
+
   const handleDeleteItem = (item: OrderItem) => {
     setItemToDelete(item);
     setShowDeleteDialog(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDeleteItem = () => {
     if (itemToDelete) {
       deleteOrderItem(itemToDelete);
     }
@@ -416,7 +439,7 @@ export default function OrdersPage() {
     setItemToDelete(null);
   };
 
-  const findAgentFullName = (id: string | null) => {
+  const findAgentFullName = (id: number | null | undefined) => {
     if (!id) return "Desconocido";
     const agent = agentNames.find((agent) => agent.id === id);
     return agent ? `${agent.name} ${agent.lastName}` : "Desconocido";
@@ -429,7 +452,7 @@ export default function OrdersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...data,
-          claimedById: userInfo.id,
+          claimedById: userInfo?.id,
         }),
       });
 
@@ -450,8 +473,8 @@ export default function OrdersPage() {
     // Handle tip submission here
     const tipAmount =
       values.tipType === "custom"
-        ? parseFloat(values.customAmount || 0)
-        : (parseFloat(values.tipType) / 100) * selectedOrder.total;
+        ? values.customAmount
+        : (parseFloat(values.tipType) / 100) * (selectedOrder?.total ?? 0);
 
     try {
       const response = await fetch(
@@ -498,8 +521,10 @@ export default function OrdersPage() {
     [menuItems]
   );
 
+
   return (
     <div className="flex h-full">
+      {/* TICKET DIALOG */}
       <Dialog open={ticketDialogOpen} onOpenChange={setTicketDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -507,13 +532,14 @@ export default function OrdersPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="text-center border-b pb-4">
-              <h3 className="font-bold">LA YURU</h3>
+              <h3 className="font-bold">{import.meta.env.VITE_RESTAURANT_NAME}</h3>
               <p className="text-sm text-muted-foreground">
                 {new Date().toLocaleString()}
               </p>
-              <p className="text-sm">Cliente: {selectedOrder?.customer}</p>
+              <p className="text-sm">Cliente: {orderCharged?.customer}</p>
               <p className="text-sm">
-                Atendido por: {findAgentFullName(selectedOrder?.claimedById)}
+                
+                Atendido por: {findAgentFullName(orderCharged?.claimedById)}
               </p>
               <p className="text-sm">
                 Cobrado por: {findAgentFullName(userInfo?.id)}
@@ -529,12 +555,12 @@ export default function OrdersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {selectedOrder?.orderItems?.map((item) => (
+                {orderCharged?.orderItems?.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>{item.quantity}</TableCell>
                     <TableCell>{findMenuItem(item.menuItemId)?.name}</TableCell>
                     <TableCell className="text-right">
-                      {MXN.format(item.total)}
+                      {MXN.format(item.total ?? 0)}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -543,14 +569,14 @@ export default function OrdersPage() {
                 <TableRow>
                   <TableCell colSpan={2}>Subtotal</TableCell>
                   <TableCell className="text-right">
-                    {MXN.format(selectedOrder?.subtotal)}
+                    {MXN.format(orderCharged?.subtotal ?? 0)}
                   </TableCell>
                 </TableRow>
-                {selectedOrder?.discountTotal > 0 && (
+                {orderCharged && orderCharged?.discountTotal > 0 && (
                   <TableRow>
                     <TableCell colSpan={2}>Descuentos</TableCell>
                     <TableCell className="text-right">
-                      {MXN.format(selectedOrder?.discountTotal)}
+                      {MXN.format(orderCharged?.discountTotal ?? 0)}
                     </TableCell>
                   </TableRow>
                 )}
@@ -558,13 +584,13 @@ export default function OrdersPage() {
                 <TableRow>
                   <TableCell colSpan={2}>Total</TableCell>
                   <TableCell className="text-right">
-                    {MXN.format(selectedOrder?.total)}
+                    {MXN.format(orderCharged?.total ?? 0)}
                   </TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell colSpan={2}>Propina</TableCell>
                   <TableCell className="text-right">
-                    {MXN.format(selectedOrder?.tip)}
+                    {MXN.format(orderCharged?.tip ?? 0)}
                   </TableCell>
                 </TableRow>
               </TableFooter>
@@ -572,6 +598,7 @@ export default function OrdersPage() {
           </div>
         </DialogContent>
       </Dialog>
+      {/* ORDER DIALOG */}
       <Dialog open={orderDialogOpen} onOpenChange={setOrderDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -632,7 +659,7 @@ export default function OrdersPage() {
       <AlertDialogDelete
         open={showDeleteDialog}
         setOpen={setShowDeleteDialog}
-        onConfirm={confirmDelete}
+        onConfirm={confirmDeleteItem}
         onCancel={() => setShowDeleteDialog(false)}
       />{" "}
       <div className="flex flex-col grow p-6 h-full gap-6">
@@ -665,13 +692,15 @@ export default function OrdersPage() {
                           ) : null}
                           <span className="text-xs text-green-600">
                             {item.discountApplied
-                              ? `-$${item.discountApplied.toFixed(2)}`
+                              ? `-${MXN.format(item.discountApplied)}`
                               : null}
                           </span>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <span>
-                            ${findMenuItem(item.menuItemId)?.price.toFixed(2)}{" "}
+                            {MXN.format(
+                              findMenuItem(item.menuItemId)?.price ?? 0
+                            )}{" "}
                             c/u
                           </span>
                           {isElevatedUser && (
@@ -694,12 +723,12 @@ export default function OrdersPage() {
                           {item.discountApplied !== null &&
                             item.discountApplied > 0 && (
                               <span className="text-xs line-through text-muted-foreground">
-                                ${item.subtotal?.toFixed(2)}
+                                {MXN.format(item.subtotal ?? 0)}
                               </span>
                             )}
 
                           <span className="font-semibold">
-                            ${item.total?.toFixed(2)}
+                            {MXN.format(item.total ?? 0)}
                           </span>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -736,7 +765,7 @@ export default function OrdersPage() {
                       Subtotal:
                     </span>
                     <span className="font-medium">
-                      ${selectedOrder.subtotal?.toFixed(2)}
+                      {MXN.format(selectedOrder.subtotal ?? 0)}
                     </span>
                   </div>
                   <div className="flex items-center gap-4">
@@ -744,27 +773,33 @@ export default function OrdersPage() {
                       Descuentos:
                     </span>
                     <span className="font-medium text-green-600">
-                      ${selectedOrder.discountTotal?.toFixed(2)}
+                      {MXN.format(selectedOrder.discountTotal ?? 0)}
                     </span>
                   </div>
                   <div className="flex items-center gap-4">
                     <span className="text-sm font-medium">Total Final:</span>
                     <span className="text-xl font-bold">
-                      ${selectedOrder.total?.toFixed(2)}
+                      {MXN.format(selectedOrder.total ?? 0)}
                     </span>
                   </div>
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <span className="">Propina:</span>
                     <span className="font-medium">
-                      ${selectedOrder.tip?.toFixed(2)}
+                      {MXN.format(selectedOrder.tip ?? 0)}
                     </span>
                   </div>
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   {isElevatedUser && (
-                    <Button variant="outline" className="grow">
+                    <ConfirmActionDialogButton
+                      onConfirm={cancelOrder}
+                      title="Cancelar orden"
+                      description="¿Estás seguro que deseas cancelar la orden?"
+                      variant="destructive"
+                      requireElevation
+                    >
                       Cancelar
-                    </Button>
+                    </ConfirmActionDialogButton>
                   )}
 
                   <Dialog
@@ -872,9 +907,14 @@ export default function OrdersPage() {
                     </DialogContent>
                   </Dialog>
                   {isElevatedUser && (
-                    <Button className="grow" onClick={() => chargeOrder()}>
+                    <ConfirmActionDialogButton
+                      onConfirm={chargeOrder}
+                      title={`Cobrar orden de ${selectedOrder.customer}`}
+                      description="¿Estás seguro que deseas cobrar la orden?"
+                    >
                       Cobrar
-                    </Button>
+                    </ConfirmActionDialogButton>
+
                   )}
                 </div>
               </div>

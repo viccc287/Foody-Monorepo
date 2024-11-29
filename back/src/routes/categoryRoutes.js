@@ -1,7 +1,7 @@
 // FILE: categoryRoutes.js
 
 import { Router } from "express";
-import Category from "../entities/CategoryEntities/Category";
+import Category from "../entities/CategoryEntities/Category.js";
 
 const router = Router();
 

@@ -13,8 +13,8 @@ export interface Order extends NewOrder {
   cancelledAt: string | null;
   cancelReason: string | null;
   status: string;
-  claimedById: string | null;
-  billedById: string | null;
+  claimedById: number | null;
+  billedById: number | null;
   orderItems: OrderItem[];
 }
 

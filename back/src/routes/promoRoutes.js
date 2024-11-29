@@ -1,6 +1,6 @@
 import { Router } from "express";
-import Promo from "../entities/PromoEntities/Promo";
-import RecurrentDate from "../entities/PromoEntities/RecurrentDate";
+import Promo from "../entities/PromoEntities/Promo.js";
+import RecurrentDate from "../entities/PromoEntities/RecurrentDate.js";
 
 const router = Router();
 
@@ -177,7 +177,7 @@ router.delete("/promos-with-availability/:id", async (req, res) => {
 router.get("/promos-with-availability", (req, res) => {
   try {
     // Fetch all promos
-    const promos = Promo.getAll();
+    const promos = Promo.getAll();    
 
     // Fetch recurrence rules for each promo
     const promosWithAvailability = promos.map((promo) => {
