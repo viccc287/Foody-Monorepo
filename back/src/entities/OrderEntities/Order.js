@@ -43,6 +43,176 @@ class Order {
     return rows.map((row) => new Order(row));
   }
 
+  static getAllPaginated(
+    offset = 0,
+    limit = -1,
+    startDate = null,
+    endDate = null
+  ) {
+    let query = `SELECT * FROM ${this.tableName}`;
+    let params = [];
+    let whereClause = [];
+
+    if (startDate) {
+      whereClause.push("createdAt >= ?");
+      params.push(startDate);
+    }
+
+    if (endDate) {
+      whereClause.push("createdAt <= ?");
+      params.push(endDate);
+    }
+
+    if (whereClause.length > 0) {
+      query += ` WHERE ${whereClause.join(" AND ")}`;
+    }
+
+    query += " ORDER BY createdAt DESC";
+
+    let countQuery = `SELECT COUNT(*) as total FROM ${this.tableName}`;
+    if (whereClause.length > 0) {
+      countQuery += ` WHERE ${whereClause.join(" AND ")}`;
+    }
+
+    let rows;
+    if (limit !== -1) {
+      query += " LIMIT ? OFFSET ?";
+      rows = db.prepare(query).all(...params, limit, offset);
+    } else {
+      rows = db.prepare(query).all(...params);
+    }
+
+    const { total } = db.prepare(countQuery).get(...params);
+
+    const orders = rows.map((row) => new Order(row));
+
+    return { orders, total };
+  }
+
+  static getTotalSales(startDate = null, endDate = null) {
+    let query = `
+      SELECT 
+        COUNT(*) as orderCount,
+        SUM(total) as totalSales,
+        SUM(tip) as totalTips,
+        SUM(discountTotal) as totalDiscounts
+      FROM ${this.tableName}
+      WHERE status != 'cancelled' AND status != 'unpaid'
+    `;
+    let params = [];
+
+    if (startDate) {
+      query += " AND createdAt >= ?";
+      params.push(startDate);
+    }
+
+    if (endDate) {
+      query += " AND createdAt <= ?";
+      params.push(endDate);
+    }
+
+    const stmt = db.prepare(query);
+    const result = stmt.get(...params);
+
+    return result;
+  }
+
+  static getDashboardStats(startDate = null, endDate = null) {
+    let params = [];
+    let dateFilter = "";
+
+    if (startDate) {
+      dateFilter += " AND createdAt >= ?";
+      params.push(startDate);
+    }
+
+    if (endDate) {
+      dateFilter += " AND createdAt <= ?";
+      params.push(endDate);
+    }
+
+    // Main stats query
+    const query = `
+    SELECT 
+      SUM(CASE WHEN o.status = 'active' THEN 1 ELSE 0 END) as activeOrders,
+      SUM(CASE WHEN o.status = 'cancelled' THEN 1 ELSE 0 END) as cancelledOrders,
+      SUM(CASE WHEN o.status = 'paid' THEN 1 ELSE 0 END) as completedOrders,
+      SUM(o.total) as totalSales,
+      SUM(o.tip) as totalTips,
+      SUM(o.discountTotal) as totalDiscounts,
+      COUNT(*) as orderCount,
+      AVG(o.total) as averageOrderValue,
+      AVG(
+        (JULIANDAY(o.billedAt) - JULIANDAY(o.createdAt)) * 24 * 60
+      ) as averageTimeBetweenCreatedAndBilled
+    FROM "Order" o
+    WHERE o.status NOT IN ('unpaid')
+      ${dateFilter.replace(/createdAt/g, "o.createdAt")}
+  `;
+
+    const hourlyQuery = `
+    SELECT 
+      strftime('%H:00', datetime(o.createdAt, 'localtime')) as hour,
+      COUNT(*) as orderCount
+    FROM "Order" o
+    WHERE o.status NOT IN ('cancelled', 'unpaid')
+      ${dateFilter.replace(/createdAt/g, "o.createdAt")}
+    GROUP BY hour
+    ORDER BY hour ASC
+  `;
+
+    const topItemsQuery = `
+    SELECT 
+      m.name as itemName,
+      SUM(oi.quantity) as totalQuantity,
+      SUM(oi.total) as totalRevenue
+    FROM OrderItem oi
+    JOIN MenuItem m ON oi.menuItemId = m.id
+    JOIN "Order" o ON oi.orderId = o.id
+    WHERE o.status NOT IN ('cancelled', 'unpaid')
+      ${dateFilter.replace(/createdAt/g, "o.createdAt")}
+    GROUP BY oi.menuItemId
+    ORDER BY totalQuantity DESC
+    LIMIT 5
+  `;
+
+    const mainStats = db.prepare(query).get(...params);
+    const hourlyDistribution = db.prepare(hourlyQuery).all(...params);
+    const topItems = db.prepare(topItemsQuery).all(...params);
+
+    return {
+      activeOrders: mainStats.activeOrders || 0,
+      cancelledOrders: mainStats.cancelledOrders || 0,
+      completedOrders: mainStats.completedOrders || 0,
+      totalSales: mainStats.totalSales || 0,
+      totalTips: mainStats.totalTips || 0,
+      totalDiscounts: mainStats.totalDiscounts || 0,
+      orderCount: mainStats.orderCount || 0,
+      averageOrderValue:
+        Math.round((mainStats.averageOrderValue || 0) * 100) / 100,
+      conversionRate: mainStats.totalOrders
+        ? parseFloat(
+            ((mainStats.completedOrders / mainStats.totalOrders) * 100).toFixed(
+              2
+            )
+          )
+        : 0,
+      averageTimeBetweenCreatedAndBilled:
+        Math.round((mainStats.averageTimeBetweenCreatedAndBilled || 0) * 100) /
+        100,
+      hourlyDistribution,
+      topSellingItems: topItems.map((item) => ({
+        name: item.itemName,
+        quantity: item.totalQuantity,
+        revenue: item.totalRevenue,
+      })),
+      period: {
+        startDate: startDate || "all time",
+        endDate: endDate || "now",
+      },
+    };
+  }
+
   static getByStatus(status) {
     const stmt = db.prepare(`SELECT * FROM ${this.tableName} WHERE status = ?`);
     const rows = stmt.all(status);
@@ -147,6 +317,22 @@ class Order {
       discountTotal,
       total,
     };
+  }
+
+  updateTotals() {
+    const orderItems = OrderItem.getByOrderId(this.id);
+
+    let subtotal = 0;
+    let discountTotal = 0;
+
+    orderItems.forEach((item) => {
+      subtotal += item.subtotal;
+      discountTotal += item.discountApplied;
+    });
+
+    this.subtotal = subtotal;
+    this.discountTotal = discountTotal;
+    this.total = subtotal - discountTotal < 0 ? 0 : subtotal - discountTotal;
   }
 
   delete() {

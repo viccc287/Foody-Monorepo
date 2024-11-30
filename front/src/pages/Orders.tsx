@@ -1,11 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { MinusCircle, PlusCircle, RefreshCcw, Trash2, X } from "lucide-react";
-import { ReactNode, useCallback, useEffect, useState } from "react";
+import { MinusCircle, PlusCircle, RefreshCcw, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -36,24 +36,24 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 import AlertDialogDelete from "@/components/AlertDialogDelete";
 import ConfirmActionDialogButton from "@/components/ConfirmActionDialogButton";
+import ItemSearchSidebar from "@/components/orders/ItemSearchSidebar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
+import { useAlert } from "@/lib/useAlert";
 import TokenService from "@/services/tokenService";
 import {
   AgentFullName,
   Category,
+  EnhancedOrder,
   MenuItem,
   NewOrder,
   NewOrderItem,
   Order,
   OrderItem,
+  StockItem,
 } from "@/types";
 
-interface NotEnoughStockItem {
-  name: string;
-  unit: string;
-  stock: number;
+interface NotEnoughStockItem extends StockItem {
   required: number;
 }
 
@@ -67,10 +67,6 @@ const tipSchema = z.object({
     .number({ invalid_type_error: "Debe ser válido" })
     .min(1, "La propina mínima es $1")
     .optional(),
-});
-
-const commentSchema = z.object({
-  comments: z.string(),
 });
 
 const adminRoles = ["manager", "cashier"];
@@ -95,21 +91,16 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(
+
+  const [selectedOrder, setSelectedOrder] = useState<EnhancedOrder | null>(
     null
   );
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
   const [tipDialogOpen, setTipDialogOpen] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<OrderItem | null>(null);
   const [isElevatedUser, setIsElevatedUser] = useState(false);
   const [agentNames, setAgentNames] = useState<AgentFullName[]>([]);
-  const [commentDialogOpen, setCommentDialogOpen] = useState(false);
-  const [itemToAdd, setItemToAdd] = useState<MenuItem | null>(null);
-
-  const [categorySearch, setCategorySearch] = useState("");
 
   const [ticketDialogOpen, setTicketDialogOpen] = useState(false);
 
@@ -117,14 +108,7 @@ export default function OrdersPage() {
 
   const [orderCharged, setOrderCharged] = useState<Order | null>(null);
 
-  const { toast } = useToast();
-
-  const alert = (title: string, description: ReactNode, status?: string) =>
-    toast({
-      title,
-      description,
-      variant: status === "error" ? "destructive" : "default",
-    });
+  const { alert } = useAlert();
 
   const orderForm = useForm<z.infer<typeof orderSchema>>({
     resolver: zodResolver(orderSchema),
@@ -141,12 +125,6 @@ export default function OrdersPage() {
     },
   });
 
-  const commentForm = useForm<z.infer<typeof commentSchema>>({
-    resolver: zodResolver(commentSchema),
-    defaultValues: {
-      comments: "",
-    },
-  });
   // Effect for user info and role check
   useEffect(() => {
     const updatedUserInfo = TokenService.getUserInfo();
@@ -162,21 +140,23 @@ export default function OrdersPage() {
         ? `${ORDER_BASE_FETCH_URL}/active`
         : `${ORDER_WAITER_FETCH_URL}/${userInfo.id}`;
 
-      const ordersData = await fetch(url).then((res) => res.json());
+      const data = await fetch(url).then((res) => res.json());
+
+      const ordersData: EnhancedOrder[] = data.orders;
+
       setOrders(ordersData);
 
       if (selectedOrder) {
         const updatedOrder = ordersData.find(
-          (order: Order) => order.id === selectedOrder.id
+          (order: EnhancedOrder) => order.id === selectedOrder.id
         );
-        setSelectedOrder(updatedOrder);
+        setSelectedOrder(updatedOrder || null);
       }
     } catch (error) {
       console.error("Error fetching orders:", error);
       // Consider adding error state and UI feedback
     }
   };
-
 
   useEffect(() => {
     fetchOrders();
@@ -205,18 +185,7 @@ export default function OrdersPage() {
     loadData();
   }, []);
 
-  useEffect(() => {
-    if (categorySearch === "") {
-      setFilteredCategories(categories);
-    } else {
-      const filtered = categories.filter((category) =>
-        category.name.toLowerCase().includes(categorySearch.toLowerCase())
-      );
-      setFilteredCategories(filtered);
-    }
-  }, [categorySearch, categories]);
-
-  const findMenuItem = useCallback(
+  const findMenuItemById = useCallback(
     (id: number) => menuItems.find((item) => item.id === id),
     [menuItems]
   );
@@ -228,11 +197,7 @@ export default function OrdersPage() {
     if (!selectedOrder) return;
 
     if (menuItem.printLocations.length > 0)
-      alert(
-        "Imprimiendo",
-        `Imprimiendo en ${menuItem.printLocations}`,
-        "success"
-      );
+      alert("Imprimiendo", `Imprimiendo en ${menuItem.printLocations}`);
 
     // Find if item already exists in order
     const existingItem = selectedOrder.orderItems?.find(
@@ -262,10 +227,10 @@ export default function OrdersPage() {
       if (!response.ok) {
         const data = await response.json();
 
-        if (data.error && data.notEnoughStock) {
+        if (data.error && data.notEnoughStockItems) {
           const errorList = (
             <ul>
-              {data.notEnoughStock.map((stockItem: NotEnoughStockItem) => (
+              {data.notEnoughStockItems.map((stockItem: NotEnoughStockItem) => (
                 <li key={stockItem.name}>
                   {stockItem.name} - {stockItem.stock.toFixed(2)}{" "}
                   {stockItem.unit} disponibles, {stockItem.required.toFixed(2)}{" "}
@@ -276,7 +241,17 @@ export default function OrdersPage() {
           );
 
           alert(data.error, errorList, "error");
-        } else console.error("Failed to update order item");
+        } else if (data.error && data.notActiveItems) {
+          const errorList = (
+            <ul>
+              {data.notActiveItems.map((item: StockItem) => (
+                <li key={item.id}>{item.name}</li>
+              ))}
+            </ul>
+          );
+
+          alert(data.error, errorList, "error");
+        } else console.error("Error al agregar artículo a la orden");
         return;
       }
 
@@ -311,20 +286,34 @@ export default function OrdersPage() {
     if (!response.ok) {
       const data = await response.json();
 
-      if (data.error && data.notEnoughStock) {
+      if (data.error && data.notEnoughStockItems) {
         const errorList = (
           <ul>
-            {data.notEnoughStock.map((stockItem: NotEnoughStockItem) => (
+            {data.notEnoughStockItems.map((stockItem: NotEnoughStockItem) => (
               <li key={stockItem.name}>
-                {stockItem.name} - {stockItem.stock.toFixed(2)} {stockItem.unit}{" "}
-                disponibles, {stockItem.required.toFixed(2)} necesarios
+                {stockItem.name} - {stockItem.stock.toFixed(2)}{" "}
+                {stockItem.unit} disponibles, {stockItem.required.toFixed(2)}{" "}
+                necesarios
               </li>
             ))}
           </ul>
         );
 
         alert(data.error, errorList, "error");
-      } else console.error("Failed to update order item");
+      } else if (data.error && data.notActiveItems) {
+        const errorList = (
+          <>
+          <p>Artículos no disponibles:</p>
+          <ul>
+            {data.notActiveItems.map((item: StockItem) => (
+              <li key={item.id}>{item.name}</li>
+            ))}
+            </ul>
+            </>
+        );
+
+        alert(data.error, errorList, "error");
+      } else console.error("Error al agregar artículo a la orden");
       return;
     }
 
@@ -336,7 +325,6 @@ export default function OrdersPage() {
   };
 
   const chargeOrder = async () => {
-
     if (!selectedOrder) return;
 
     if (!selectedOrder.orderItems || selectedOrder.orderItems.length === 0) {
@@ -505,23 +493,6 @@ export default function OrdersPage() {
     tipForm.reset();
   };
 
-  const onCommentSubmit = async (values: z.infer<typeof commentSchema>) => {
-    if (!itemToAdd) return;
-
-    await addItemToOrder(itemToAdd, values.comments);
-    setCommentDialogOpen(false);
-    commentForm.reset();
-    setItemToAdd(null);
-  };
-
-  const getMenuItemsByCategory = useCallback(
-    (categoryId: number) => {
-      return menuItems.filter((item) => item.categoryId === categoryId);
-    },
-    [menuItems]
-  );
-
-
   return (
     <div className="flex h-full">
       {/* TICKET DIALOG */}
@@ -532,13 +503,14 @@ export default function OrdersPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="text-center border-b pb-4">
-              <h3 className="font-bold">{import.meta.env.VITE_RESTAURANT_NAME}</h3>
+              <h3 className="font-bold">
+                {import.meta.env.VITE_RESTAURANT_NAME}
+              </h3>
               <p className="text-sm text-muted-foreground">
                 {new Date().toLocaleString()}
               </p>
               <p className="text-sm">Cliente: {orderCharged?.customer}</p>
               <p className="text-sm">
-                
                 Atendido por: {findAgentFullName(orderCharged?.claimedById)}
               </p>
               <p className="text-sm">
@@ -558,7 +530,9 @@ export default function OrdersPage() {
                 {orderCharged?.orderItems?.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>{item.quantity}</TableCell>
-                    <TableCell>{findMenuItem(item.menuItemId)?.name}</TableCell>
+                    <TableCell>
+                      {findMenuItemById(item.menuItemId)?.name}
+                    </TableCell>
                     <TableCell className="text-right">
                       {MXN.format(item.total ?? 0)}
                     </TableCell>
@@ -682,7 +656,7 @@ export default function OrdersPage() {
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-medium">
-                            {findMenuItem(item.menuItemId)?.name ||
+                            {findMenuItemById(item.menuItemId)?.name ||
                               "Artículo eliminado"}
                           </span>
                           {item.appliedPromos.length > 0 ? (
@@ -699,7 +673,7 @@ export default function OrdersPage() {
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <span>
                             {MXN.format(
-                              findMenuItem(item.menuItemId)?.price ?? 0
+                              findMenuItemById(item.menuItemId)?.price ?? 0
                             )}{" "}
                             c/u
                           </span>
@@ -914,7 +888,6 @@ export default function OrdersPage() {
                     >
                       Cobrar
                     </ConfirmActionDialogButton>
-
                   )}
                 </div>
               </div>
@@ -929,137 +902,12 @@ export default function OrdersPage() {
         )}
       </div>
       {/* Right Sidebar */}
-      <div className="flex flex-col max-w-72 grow border-l p-4 h-full">
-        <div className="flex flex-col mb-4 gap-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">
-              {selectedCategory ? selectedCategory.name : "Categorías"}
-            </h2>
-
-            {selectedCategory && (
-              <Button variant="ghost" onClick={() => setSelectedCategory(null)}>
-                Volver
-              </Button>
-            )}
-          </div>
-          {!selectedCategory && (
-            <div className="flex gap-1">
-              <Input
-                type="text"
-                value={categorySearch}
-                onChange={(e) => setCategorySearch(e.target.value)}
-                placeholder="Buscar categoría"
-              />
-              {categorySearch && (
-                <Button
-                  onClick={() => {
-                    setCategorySearch("");
-                  }}
-                  variant="outline"
-                >
-                  <X />
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-        <ScrollArea className="h-full mt-4">
-          <div className="grid gap-2">
-            {!selectedCategory
-              ? // Show categories
-                filteredCategories.map((category) => (
-                  <Card
-                    key={category.id}
-                    className="cursor-pointer hover:bg-accent"
-                    onClick={() => setSelectedCategory(category)}
-                  >
-                    <CardHeader className="p-3">
-                      <CardTitle className="text-sm">{category.name}</CardTitle>
-                    </CardHeader>
-                  </Card>
-                ))
-              : // Show menu items for selected category
-                getMenuItemsByCategory(selectedCategory.id).map((item) => (
-                  <Card key={item.id}>
-                    <CardHeader className="p-4">
-                      <div className="flex justify-between items-center gap-4 flex-wrap xl:flex-nowrap">
-                        <div>
-                          <CardTitle className="text-sm">{item.name}</CardTitle>
-                          <p className="text-sm text-muted-foreground">
-                            ${item.price}
-                          </p>
-                        </div>
-                        <div className="flex gap-2 flex-wrap xl:max-w-min">
-                          <Button
-                            className="grow"
-                            size="sm"
-                            onClick={() => addItemToOrder(item)}
-                            disabled={!selectedOrder}
-                          >
-                            Agregar
-                          </Button>
-                          <Button
-                            className="grow"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setItemToAdd(item);
-                              setCommentDialogOpen(true);
-                            }}
-                            disabled={!selectedOrder}
-                          >
-                            Con comentario
-                          </Button>
-                        </div>
-                      </div>
-                    </CardHeader>
-                  </Card>
-                ))}
-          </div>
-          <Dialog open={commentDialogOpen} onOpenChange={setCommentDialogOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Agregar con comentarios</DialogTitle>
-                <DialogDescription>
-                  Agregar {itemToAdd?.name} a la orden de{" "}
-                  {selectedOrder?.customer || "l cliente"} con comentarios
-                </DialogDescription>
-              </DialogHeader>
-              <Form {...commentForm}>
-                <form
-                  onSubmit={commentForm.handleSubmit(onCommentSubmit)}
-                  className="space-y-4"
-                >
-                  <FormField
-                    control={commentForm.control}
-                    name="comments"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <Input placeholder="Comentarios" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setCommentDialogOpen(false);
-                      }}
-                    >
-                      Cancelar
-                    </Button>
-                    <Button type="submit">Agregar con comentario</Button>
-                  </div>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
-        </ScrollArea>
-      </div>
+      <ItemSearchSidebar
+        menuItems={menuItems}
+        categories={categories}
+        addItemToOrder={addItemToOrder}
+        selectedOrder={selectedOrder}
+      />
     </div>
   );
 }

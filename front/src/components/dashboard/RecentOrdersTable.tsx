@@ -8,12 +8,15 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
+import { formatDistanceToNow } from "date-fns";
+
+import { es } from "date-fns/locale";
+
 import type { EnhancedOrder, AgentFullName } from "@/types";
 
 interface RecentOrdersTableProps {
   orders: EnhancedOrder[];
   agentNames: AgentFullName[];
-  limit?: number;
 }
 
 const statuses: { [key: string]: string } = {
@@ -23,36 +26,12 @@ const statuses: { [key: string]: string } = {
   unpaid: "No pagada",
 };
 
-const parseRelativeTime = (dateString: string): string => {
-  const inputDate = new Date(dateString);
-  const now = new Date();
-  const diffMillis = now.getTime() - inputDate.getTime();
+const MXN = new Intl.NumberFormat("es-MX", {
+  style: "currency",
+  currency: "MXN",
+});
 
-  const minutes = Math.floor(diffMillis / (1000 * 60));
-  const hours = Math.floor(diffMillis / (1000 * 60 * 60));
-  const days = Math.floor(diffMillis / (1000 * 60 * 60 * 24));
-  const weeks = Math.floor(diffMillis / (1000 * 60 * 60 * 24 * 7));
-  const months = Math.floor(diffMillis / (1000 * 60 * 60 * 24 * 30));
-  const years = Math.floor(diffMillis / (1000 * 60 * 60 * 24 * 365));
 
-  if (minutes < 1) {
-    return "justo ahora";
-  } else if (minutes < 60) {
-    return `hace ${minutes} minutos`;
-  } else if (hours < 24) {
-    return `hace ${hours} horas`;
-  } else if (days === 1) {
-    return "ayer";
-  } else if (days < 7) {
-    return `hace ${days} días`;
-  } else if (weeks < 5) {
-    return `hace ${weeks} ${weeks === 1 ? "semana" : "semanas"}`;
-  } else if (months < 12) {
-    return `hace ${months} ${months === 1 ? "mes" : "meses"}`;
-  } else {
-    return `hace ${years} ${years === 1 ? "año" : "años"}`;
-  }
-};
 
 const sortOrdersByDate = (orders: EnhancedOrder[]) => {
   return orders.sort((a, b) => {
@@ -63,7 +42,6 @@ const sortOrdersByDate = (orders: EnhancedOrder[]) => {
 export function RecentOrdersTable({
   orders,
   agentNames,
-  limit = 5,
 }: RecentOrdersTableProps) {
 
   const findAgentFullName = (id: number | null) => {
@@ -86,12 +64,12 @@ export function RecentOrdersTable({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {sortOrdersByDate(orders).slice(0, limit).map((order) => (
+        {sortOrdersByDate(orders).map((order) => (
           <TableRow key={order.id}>
             <TableCell>{order.id}</TableCell>
             <TableCell>{order.customer}</TableCell>
             <TableCell>{order.orderItems.length}</TableCell>
-            <TableCell>${order.total.toFixed(2)}</TableCell>
+            <TableCell>{MXN.format(order.total)}</TableCell>
             <TableCell>
               <Badge
                 className={
@@ -101,8 +79,10 @@ export function RecentOrdersTable({
                 {statuses[order.status] || "Desconocido"}
               </Badge>
             </TableCell>
+           
+
             <TableCell className="flex items-center gap-2">
-              {parseRelativeTime(order.createdAt)}
+              {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: es })}
             </TableCell>
             <TableCell>{findAgentFullName(order.claimedById)}</TableCell>
           </TableRow>

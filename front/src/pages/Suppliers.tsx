@@ -25,7 +25,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useToast } from "@/hooks/use-toast";
 import useSortConfig from "@/lib/useSortConfig";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Edit2, PlusCircle, Trash2 } from "lucide-react";
@@ -34,6 +33,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import ConfirmActionDialogButton from "@/components/ConfirmActionDialogButton";
+import { useAlert } from "@/lib/useAlert";
 import { NewSupplier, SortableColumn, Supplier } from "@/types";
 
 const formSchema = z.object({
@@ -99,14 +99,7 @@ export default function Suppliers() {
   const { sortConfig, sortItems: sortSuppliers } =
     useSortConfig<Supplier>(setSuppliers);
 
-  const { toast } = useToast();
-
-  const alert = (title: string, description: string, status?: string) =>
-    toast({
-      title,
-      description,
-      variant: status === "error" ? "destructive" : "default",
-    });
+  const { alert } = useAlert();
 
   const defaultValues: NewSupplier = {
     name: "",

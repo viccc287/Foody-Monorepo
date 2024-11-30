@@ -39,7 +39,6 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 
-import { useToast } from "@/hooks/use-toast";
 
 import SortableTableHeadSet from "@/components/SortableTableHeadSet";
 import { Badge } from "@/components/ui/badge";
@@ -47,6 +46,7 @@ import useSortConfig from "@/lib/useSortConfig";
 import type { SortableColumn } from "@/types";
 
 import ConfirmActionDialogButton from "@/components/ConfirmActionDialogButton";
+import { useAlert } from "@/lib/useAlert";
 import type { MenuItem, StockItem } from "@/types";
 
 type Category = {
@@ -58,7 +58,7 @@ type Category = {
 
 const printLocations = ["Cocina", "Caja", "Barra"];
 
-const units = ["pieza", "orden", "vaso", "botella", "kg", "g", "l", "ml"];
+const units = ["orden", "pieza", "porción", "vaso", "botella", "kg", "g", "l", "ml", "acción"];
 
 const formSchema = z.object({
   name: z.string().trim().min(1, "Nombre requerido"),
@@ -174,14 +174,7 @@ export default function MenuItems() {
 
   const { sortConfig, sortItems } = useSortConfig<MenuItem>(setItems);
 
-  const { toast } = useToast();
-
-  const alert = (title: string, description: string, status?: string) =>
-    toast({
-      title,
-      description,
-      variant: status === "error" ? "destructive" : "default",
-    });
+  const { alert } = useAlert();
 
   const defaultValues: FormValues = {
     name: "",

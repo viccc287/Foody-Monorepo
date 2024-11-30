@@ -19,8 +19,8 @@ app.use(express.json());
 app.use(cors());
 app.use("/authenticate", authenticateRoutes);
 
-app.use(authenticate);
-
+/* app.use(authenticate);
+ */
 app.use("/items", itemRoutes);
 app.use("/agents", agentRoutes);
 app.use("/menu", menuRoutes);

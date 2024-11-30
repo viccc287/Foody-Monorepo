@@ -32,7 +32,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useToast } from "@/hooks/use-toast";
 import useSortConfig from "@/lib/useSortConfig";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { DollarSign, Edit2, PlusCircle, Trash2 } from "lucide-react";
@@ -42,6 +41,7 @@ import * as z from "zod";
 
 import ConfirmActionDialogButton from "@/components/ConfirmActionDialogButton";
 import { Badge } from "@/components/ui/badge";
+import { useAlert } from "@/lib/useAlert";
 import type {
   Category,
   NewStockItem,
@@ -151,15 +151,9 @@ export default function Stock() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<StockItem | null>(null);
-  const { toast } = useToast();
   const { sortConfig, sortItems } = useSortConfig<StockItem>(setItems);
-
-  const alert = (title: string, description: string, status?: string) =>
-    toast({
-      title,
-      description,
-      variant: status === "error" ? "destructive" : "default",
-    });
+  const {alert} = useAlert();
+  
 
   const defaultValues: NewStockItem = {
     name: "",

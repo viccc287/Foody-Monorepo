@@ -32,6 +32,7 @@ const ROUTE_ROLES = {
 };
 
 import { ReactNode } from "react";
+import { ScrollArea } from "./components/ui/scroll-area";
 
 interface RoleBasedRouteProps {
   children: ReactNode;
@@ -63,7 +64,8 @@ function AppLayout() {
     <SidebarProvider>
       <Toaster />
       {!isLoginRoute && userInfo && <AppSidebar />}
-      <main className="w-full h-[100svh] overflow-auto p-6">
+      <main className="w-full h-[100svh] overflow-auto p-6 ">
+        <ScrollArea className="h-full w-full">
         <div className="flex flex-col h-full ">
           {!isLoginRoute && userInfo && <SidebarTrigger />}
           <Routes>
@@ -148,7 +150,8 @@ function AppLayout() {
               }
             />
           </Routes>
-        </div>
+          </div>
+        </ScrollArea>
       </main>
     </SidebarProvider>
   );

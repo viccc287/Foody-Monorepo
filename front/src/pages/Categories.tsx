@@ -36,11 +36,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useToast } from "@/hooks/use-toast";
 import { Edit2, PlusCircle, Trash2 } from "lucide-react";
 
 import ConfirmActionDialogButton from "@/components/ConfirmActionDialogButton";
 import SortableTableHeadSet from "@/components/SortableTableHeadSet";
+import { useAlert } from "@/lib/useAlert";
 import useSortConfig from "@/lib/useSortConfig";
 import { Category, NewCategory, SortableColumn } from "@/types";
 
@@ -108,14 +108,8 @@ export default function Categories() {
   const { sortConfig, sortItems: sortCategories } =
     useSortConfig<Category>(setCategories);
 
-  const { toast } = useToast();
+  const { alert } = useAlert();
 
-  const alert = (title: string, description: string, status?: string) =>
-    toast({
-      title,
-      description,
-      variant: status === "error" ? "destructive" : "default",
-    });
 
   const defaultValues: NewCategory = {
     name: "",

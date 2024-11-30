@@ -36,7 +36,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useToast } from "@/hooks/use-toast";
+import { useAlert } from "@/lib/useAlert";
 import useSortConfig from "@/lib/useSortConfig";
 import { FormValues, MenuItem, NewPromo, Promo, SortableColumn } from "@/types";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -291,8 +291,9 @@ export default function Promos() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPromo, setEditingPromo] = useState<Promo | null>(null);
   const [selectedType, setSelectedType] = useState("");
-  const { toast } = useToast();
   const { sortConfig, sortItems: sortPromos } = useSortConfig<Promo>(setPromos);
+
+  const { alert } = useAlert();
 
   const findMenuItemName = useCallback(
     (id: number) => {
@@ -301,13 +302,6 @@ export default function Promos() {
     },
     [menuItems]
   );
-
-  const alert = (title: string, description: string, status?: string) =>
-    toast({
-      title,
-      description,
-      variant: status === "error" ? "destructive" : "default",
-    });
 
   const defaultValues: FormValues = {
     menuItemId: null,

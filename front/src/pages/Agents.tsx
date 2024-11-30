@@ -40,8 +40,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useAlert } from "@/lib/useAlert";
 import type { Agent } from "@/types";
-import { useToast } from "@/hooks/use-toast";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -139,14 +139,7 @@ export default function AgentPage() {
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [showPin, setShowPin] = useState(false);
-  const { toast } = useToast();
-
-  const alert = (title: string, description: string, status?: string) =>
-    toast({
-      title,
-      description,
-      variant: status === "error" ? "destructive" : "default",
-    });
+  const { alert } = useAlert();
 
   const defaultValues: FormValues = {
     name: "",

@@ -1,7 +1,6 @@
 import { Router } from "express";
 import Order from "../entities/OrderEntities/Order.js";
 import OrderItem from "../entities/OrderEntities/OrderItem.js";
-import MenuItem from "../entities/StockEntities/MenuItem.js";
 import Ingredient from "../entities/StockEntities/Ingredient.js";
 import StockItem from "../entities/StockEntities/StockItem.js";
 
@@ -12,39 +11,106 @@ const router = Router();
  */
 
 // Get all orders
-// Get all orders
+// Get orders with optional pagination
 router.get("/", (req, res) => {
   try {
-    const orders = Order.getAll();    
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || -1;
+    const offset = (page - 1) * (limit === -1 ? 0 : limit);
 
-    // Enhance each order with items and calculations
-    const enhancedOrders = orders.map((order) => {
-      const orderItems = OrderItem.getByOrderId(order.id);
-      let subtotal = 0;
-      let discountTotal = 0;
+    let startDate = req.query.startDate ? new Date(req.query.startDate) : null;
+    let endDate = req.query.endDate ? new Date(req.query.endDate) : null;
 
-      orderItems.forEach((item) => {
-        subtotal += item.subtotal;
-        discountTotal += item.discountApplied;
-      });
+    // Validate dates
+    if (
+      (startDate && isNaN(startDate.getTime())) ||
+      (endDate && isNaN(endDate.getTime()))
+    ) {
+      return res.status(400).json({ error: "Invalid date format" });
+    }
 
-      const total = subtotal - discountTotal < 0 ? 0 : subtotal - discountTotal;
+    // Convert to ISO string for SQL
+    startDate = startDate?.toISOString();
+    endDate = endDate?.toISOString();
 
-      order.subtotal = subtotal;
-      order.discountTotal = discountTotal;
-      order.total = total;
+    const { orders, total } = Order.getAllPaginated(
+      offset,
+      limit,
+      startDate,
+      endDate
+    );
 
-      return {
-        ...order,
-        orderItems,
-        subtotal,
-        discountTotal,
+    const enhancedOrders = orders.map((order) => order.getEnhancedOrder());
+
+    const response = {
+      orders: enhancedOrders,
+      total,
+    };
+
+    if (limit !== -1) {
+      response.pagination = {
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
       };
-    });
-    
-    res.json(enhancedOrders);
+    }
+
+    res.json(response);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch orders. " + error.message });
+  }
+});
+
+router.get("/dashboard-stats", (req, res) => {
+  try {
+    let startDate = req.query.startDate ? new Date(req.query.startDate) : null;
+    let endDate = req.query.endDate ? new Date(req.query.endDate) : null;
+
+    // Validate dates
+    if (
+      (startDate && isNaN(startDate.getTime())) ||
+      (endDate && isNaN(endDate.getTime()))
+    ) {
+      return res.status(400).json({ error: "Invalid date format" });
+    }
+
+    // Convert to ISO string for SQL
+    startDate = startDate?.toISOString();
+    endDate = endDate?.toISOString();
+
+    const stats = Order.getDashboardStats(startDate, endDate);
+    res.json(stats);
+  } catch (error) {
+    
+    res
+      .status(500)
+      .json({ error: "Failed to fetch dashboard stats. " + error.message });
+  }
+});
+
+router.get("/total-sales", (req, res) => {
+  try {
+    let startDate = req.query.startDate ? new Date(req.query.startDate) : null;
+    let endDate = req.query.endDate ? new Date(req.query.endDate) : null;
+
+    // Validate dates
+    if (
+      (startDate && isNaN(startDate.getTime())) ||
+      (endDate && isNaN(endDate.getTime()))
+    ) {
+      return res.status(400).json({ error: "Invalid date format" });
+    }
+
+    // Convert to ISO string for SQL
+    startDate = startDate?.toISOString();
+    endDate = endDate?.toISOString();
+
+    const totals = Order.getTotalSales(startDate, endDate);
+    res.json(totals);
+  } catch (error) {
+    res
+      .status(500)
+      .json({ error: "Failed to fetch total sales. " + error.message });
   }
 });
 
@@ -52,32 +118,9 @@ router.get("/active", (req, res) => {
   try {
     const orders = Order.getByStatus("active");
 
-    // Enhance each order with items and calculations
-    const enhancedOrders = orders.map((order) => {
-      const orderItems = OrderItem.getByOrderId(order.id);
-      let subtotal = 0;
-      let discountTotal = 0;
+    const enhancedOrders = orders.map((order) => order.getEnhancedOrder());
 
-      orderItems.forEach((item) => {
-        subtotal += item.subtotal;
-        discountTotal += item.discountApplied;
-      });
-
-      const total = subtotal - discountTotal < 0 ? 0 : subtotal - discountTotal;
-
-      order.subtotal = subtotal;
-      order.discountTotal = discountTotal;
-      order.total = total;
-
-      return {
-        ...order,
-        orderItems,
-        subtotal,
-        discountTotal,
-      };
-    });
-
-    res.json(enhancedOrders);
+    res.json({ orders: enhancedOrders });
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch orders. " + error.message });
   }
@@ -91,7 +134,7 @@ router.get("/active-orders-by-agent/:agentId", (req, res) => {
     // Enhance each order with items and calculations
     const enhancedOrders = orders.map((order) => order.getEnhancedOrder());
 
-    res.json(enhancedOrders);
+    res.json({ orders: enhancedOrders });
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch orders. " + error.message });
   }
@@ -133,7 +176,7 @@ router.post("/", (req, res) => {
     const order = new Order(req.body);
     order.createdAt = new Date().toISOString();
     order.save();
-    
+
     res.status(201).json(order);
   } catch (error) {
     res.status(500).json({ error: "Failed to create order. " + error.message });
@@ -188,7 +231,7 @@ router.get("/:orderId/order-items", (req, res) => {
 router.put("/:id/charge", async (req, res) => {
   try {
     const { id } = req.params;
-    const { tip, paymentMethod, billedById } = req.body;
+    const {  paymentMethod, billedById } = req.body;
 
     const order = Order.getById(Number(id));
     if (!order) {
@@ -196,11 +239,12 @@ router.put("/:id/charge", async (req, res) => {
     }
 
     // Update order status
-    order.tip = tip;
     order.paymentMethod = paymentMethod;
     order.status = "paid";
     order.billedById = billedById;
     order.billedAt = new Date().toISOString();
+
+    order.updateTotals();
     order.save();
 
     res.json({ message: "Order charged successfully." });
@@ -217,7 +261,6 @@ router.put("/:id/cancel", async (req, res) => {
 
     const order = Order.getById(Number(id));
     if (!order) {
-      
       return res.status(404).json({ message: "Order not found" });
     }
 
@@ -229,7 +272,6 @@ router.put("/:id/cancel", async (req, res) => {
 
     const orderItems = OrderItem.getByOrderId(Number(id));
     orderItems.forEach((item) => {
-
       const ingredients = Ingredient.getByMenuItemId(item.menuItemId);
 
       for (const ingredient of ingredients) {
@@ -244,7 +286,7 @@ router.put("/:id/cancel", async (req, res) => {
     res.status(200).json({ message: "Order cancelled successfully", order });
   } catch (error) {
     console.log(error);
-    
+
     res.status(500).json({ message: "Server error", error });
   }
 });
@@ -265,10 +307,11 @@ router.put("/:id/unpay", async (req, res) => {
 
     res.json({ message: "Order status updated successfully." });
   } catch (error) {
-    res.status(500).json({ error: "Failed to update order status. " + error.message });
+    res
+      .status(500)
+      .json({ error: "Failed to update order status. " + error.message });
   }
-}
-);
+});
 
 // Add tip to order
 router.patch("/:id/tip", (req, res) => {

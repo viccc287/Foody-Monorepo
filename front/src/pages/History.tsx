@@ -9,47 +9,36 @@ import { useEffect, useState } from "react";
 
 import useSortConfig from "@/lib/useSortConfig";
 
-import type { SortableColumn } from "@/types";
-
-import { useToast } from "@/hooks/use-toast";
+import type { OrderPaginatedResponse, SortableColumn } from "@/types";
 
 import SortableTableHeadSet from "@/components/SortableTableHeadSet";
 
-import type { OrderItem, MenuItem } from "@/types";
+import PaginationNav from "@/components/PaginationNav";
 import { Badge } from "@/components/ui/badge";
-
-interface Order {
-  id: number;
-  customer: string;
-  total: number;
-  tip: number;
-  cancelReason?: string;
-  subtotal: number;
-  discountTotal: number;
-  orderItems: OrderItem[];
-  status: string;
-  createdAt: string;
-  billedById: string;
-}
-
-interface AgentFullName {
-  id: string;
-  name: string;
-  lastName: string;
-}
+import { useAlert } from "@/lib/useAlert";
+import type { AgentFullName, MenuItem, Order } from "@/types";
 
 const BASE_FETCH_URL = import.meta.env.VITE_SERVER_URL + "/orders";
+const ORDER_LIMIT = 15;
 
 const MXN = new Intl.NumberFormat("es-MX", {
   style: "currency",
   currency: "MXN",
 });
 
-const fetchOrders = async (): Promise<Order[]> => {
-  const response = await fetch(BASE_FETCH_URL);
-  const data: Order[] = await response.json();
+const fetchOrders = async (
+  page: number = 1
+): Promise<OrderPaginatedResponse> => {
+  const response = await fetch(
+    `${BASE_FETCH_URL}/?limit=${ORDER_LIMIT}&page=${page}`
+  );
+  const data: OrderPaginatedResponse = await response.json();
   if (!response.ok) throw new Error("Error al cargar las órdenes");
-  return data.filter((order) => order.status !== "active");
+
+  return {
+    ...data,
+    orders: data.orders.filter((order) => order.status !== "active"),
+  };
 };
 
 const fetchAgentNames = async (): Promise<AgentFullName[]> => {
@@ -95,25 +84,38 @@ export default function History() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [agentNames, setAgentNames] = useState<AgentFullName[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const { toast } = useToast();
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const { sortConfig, sortItems } = useSortConfig<Order>(setOrders);
+
+  const { alert } = useAlert();
 
   useEffect(() => {
     fetchOrders()
-      .then(setOrders)
+      .then((response) => {
+        setOrders(response.orders);
+        setTotalPages(response.pagination.totalPages);
+      })
       .catch((error) => {
-        toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive",
-        });
+        alert("Error", error.message, "error");
       });
 
     fetchAgentNames().then(setAgentNames);
     fetchMenuItems().then(setMenuItems);
-  }, [toast]);
+  }, []);
 
-  const findAgentFullName = (id: string | null) => {
+  useEffect(() => {
+    fetchOrders(page)
+      .then((response) => {
+        setOrders(response.orders);
+        setTotalPages(response.pagination.totalPages);
+      })
+      .catch((error) => {
+        alert("Error", error.message, "error");
+      });
+  }, [page]);
+
+  const findAgentFullName = (id: number | null) => {
     if (!id) return "Desconocido";
     const agent = agentNames.find((agent) => agent.id === id);
     return agent ? `${agent.name} ${agent.lastName}` : "Desconocido";
@@ -125,67 +127,76 @@ export default function History() {
   };
 
   return (
-    <div className="container mx-auto py-10">
+    <div className="container mx-auto py-10 ">
       <h1 className="text-3xl font-bold mb-6">Histórico de Órdenes</h1>
       {orders.length === 0 ? (
         <div className="text-center">No hay órdenes históricas</div>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <SortableTableHeadSet
-                sortFunction={sortItems}
-                sortConfig={sortConfig}
-                columns={tableHeaderColumns}
-              />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {orders.map((order) => (
-              <TableRow key={order.id}>
-                <TableCell>{order.id}</TableCell>
-                <TableCell>{order.customer}</TableCell>
-                <TableCell>{MXN.format(order.subtotal)}</TableCell>
-
-                <TableCell>{MXN.format(order.discountTotal)}</TableCell>
-
-                <TableCell>{MXN.format(order.total)}</TableCell>
-                <TableCell>{MXN.format(order.tip)}</TableCell>
-
-                <TableCell>
-                  <Badge
-                    className={
-                      order.status === "active"
-                        ? "bg-blue-600"
-                        : order.status === "paid"
-                        ? "bg-green-600"
-                        : order.status === "cancelled"
-                        ? "bg-red-600"
-                        : "bg-yellow-600"
-                    }
-                  >
-                    {statuses[order.status] || "Desconocido"}
-                  </Badge>{" "}
-                </TableCell>
-                <TableCell>
-                  {new Date(order.createdAt).toLocaleString()}
-                </TableCell>
-                <TableCell>
-                  {order.billedById && findAgentFullName(order.billedById)}
-                </TableCell>
-                <TableCell>
-                  <ul className=" list-disc">
-                    {order.orderItems.map((item) => (
-                      <li key={item.id}>
-                        {item.quantity}x {findMenuItemName(item.menuItemId)}
-                      </li>
-                    ))}
-                  </ul>
-                </TableCell>
+        <>
+          {totalPages > 1 && (
+            <PaginationNav
+              page={page}
+              setPage={setPage}
+              totalPages={totalPages}
+            />
+          )}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <SortableTableHeadSet
+                  sortFunction={sortItems}
+                  sortConfig={sortConfig}
+                  columns={tableHeaderColumns}
+                />
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {orders.map((order) => (
+                <TableRow key={order.id}>
+                  <TableCell>{order.id}</TableCell>
+                  <TableCell>{order.customer}</TableCell>
+                  <TableCell>{MXN.format(order.subtotal)}</TableCell>
+
+                  <TableCell>{MXN.format(order.discountTotal)}</TableCell>
+
+                  <TableCell>{MXN.format(order.total)}</TableCell>
+                  <TableCell>{MXN.format(order.tip)}</TableCell>
+
+                  <TableCell>
+                    <Badge
+                      className={
+                        order.status === "active"
+                          ? "bg-blue-600"
+                          : order.status === "paid"
+                          ? "bg-green-600"
+                          : order.status === "cancelled"
+                          ? "bg-red-600"
+                          : "bg-yellow-600"
+                      }
+                    >
+                      {statuses[order.status] || "Desconocido"}
+                    </Badge>{" "}
+                  </TableCell>
+                  <TableCell>
+                    {new Date(order.createdAt).toLocaleString()}
+                  </TableCell>
+                  <TableCell>
+                    {order.billedById && findAgentFullName(order.billedById)}
+                  </TableCell>
+                  <TableCell>
+                    <ul className=" list-disc">
+                      {order.orderItems.map((item) => (
+                        <li key={item.id}>
+                          {item.quantity}x {findMenuItemName(item.menuItemId)}
+                        </li>
+                      ))}
+                    </ul>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </>
       )}
     </div>
   );

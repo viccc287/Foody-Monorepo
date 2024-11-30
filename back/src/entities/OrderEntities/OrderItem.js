@@ -75,8 +75,6 @@ class OrderItem {
 
     // Get active promos
     const promos = await Promo.getActiveByMenuItemId(this.menuItemId);
-
-    console.log("active promos", promos.length);
     
 
     // Calculate new promotions
@@ -141,10 +139,7 @@ class OrderItem {
     return MenuItem.getById(this.menuItemId).price;
   }
 
-  updateTotals() {
-    // Calculate total discount from all applied promos
-    console.log("applied promos", this.appliedPromos);
-    
+  updateTotals() {    
     
     
     this.discountApplied = this.appliedPromos.at(-1)?.discountApplied || 0;

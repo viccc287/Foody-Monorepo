@@ -2,6 +2,18 @@ export interface NewOrder {
   customer: string;
 }
 
+export interface Pagination {
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface OrderPaginatedResponse {
+  orders: Order[];
+  pagination: Pagination;
+  totalPages: number;
+}
+
 export interface Order extends NewOrder {
   id: number;
   subtotal: number;
