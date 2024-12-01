@@ -163,6 +163,7 @@ const seed = () => {
       {
         name: "Tomates",
         stock: 100,
+        minStock: 10,
         unit: "kg",
         isActive: true,
         categoryId: -1, // Categoría 'Sin clasificar' de inventario
@@ -172,6 +173,7 @@ const seed = () => {
       {
         name: "Queso",
         stock: 50,
+        minStock: 5,
         unit: "kg",
         isActive: true,
         categoryId: -1,
@@ -182,14 +184,15 @@ const seed = () => {
     ];
 
     const insertStockItemStmt = db.prepare(`
-      INSERT INTO StockItem (name, stock, unit, isActive, categoryId, supplierId, cost)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO StockItem (name, stock, minStock, unit, isActive, categoryId, supplierId, cost)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stockItems.forEach((item) => {
       insertStockItemStmt.run(
         item.name,
         item.stock,
+        item.minStock,
         item.unit,
         item.isActive ? 1 : 0,
         item.categoryId,
@@ -225,7 +228,78 @@ const seed = () => {
         variablePrice: false,
         price: 120.0,
       },
-      // Agrega más artículos de menú según sea necesario
+      {
+        name: "Hamburguesa con Papas",
+        quantity: 1,
+        unit: "combo",
+        isActive: true,
+        categoryId: -2,
+        printLocations: JSON.stringify(["Cocina"]),
+        variablePrice: false,
+        price: 150.0,
+      },
+      {
+        name: "Ensalada César",
+        quantity: 1,
+        unit: "porción",
+        isActive: true,
+        categoryId: -2,
+        printLocations: JSON.stringify(["Cocina"]),
+        variablePrice: false,
+        price: 80.0,
+      }
+      ,
+      {
+        name: "Tacos al Pastor",
+        quantity: 1,
+        unit: "orden",
+        isActive: true,
+        categoryId: -2,
+        printLocations: JSON.stringify(["Cocina"]),
+        variablePrice: false,
+        price: 90.0,
+      },
+      {
+        name: "Sopa de Tortilla",
+        quantity: 1,
+        unit: "porción",
+        isActive: true,
+        categoryId: -2,
+        printLocations: JSON.stringify(["Cocina"]),
+        variablePrice: false,
+        price: 70.0,
+      },
+      {
+        name: "Chilaquiles Verdes",
+        quantity: 1,
+        unit: "porción",
+        isActive: true,
+        categoryId: -2,
+        printLocations: JSON.stringify(["Cocina"]),
+        variablePrice: false,
+        price: 85.0,
+      },
+      {
+        name: "Enchiladas Rojas",
+        quantity: 1,
+        unit: "porción",
+        isActive: true,
+        categoryId: -2,
+        printLocations: JSON.stringify(["Cocina"]),
+        variablePrice: false,
+        price: 95.0,
+      },
+      {
+        name: "Tostadas de Tinga",
+        quantity: 1,
+        unit: "orden",
+        isActive: true,
+        categoryId: -2,
+        printLocations: JSON.stringify(["Cocina"]),
+        variablePrice: false,
+        price: 80.0,
+      }
+
     ];
 
     const insertMenuItemStmt = db.prepare(`

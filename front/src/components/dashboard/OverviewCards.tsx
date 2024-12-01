@@ -1,18 +1,21 @@
 "use client";
 
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   CheckCircle,
-  DollarSign,
-  ShoppingCart,
-  XCircle,
-  TrendingUp,
-  Percent,
-  Package,
+  ClipboardList,
   Clock,
   Coins,
-  ClipboardList,
-  Clock2,
+  DollarSign,
+  Package,
+  Percent,
+  XCircle
 } from "lucide-react";
 import {
   Bar,
@@ -22,12 +25,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 
 import {
   ChartContainer,
@@ -70,61 +67,62 @@ export function OverviewCards({
 }: OverviewCardsProps) {
   return (
     <>
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 auto-rows-auto">
-        <Card className="sm:col-span-2 lg:col-span-2 row-span-2">
-          <CardHeader>
-            <CardTitle>Resumen Histórico</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex flex-col items-start">
-                <h3 className="text-md font-medium text-muted-foreground">
-                  Ventas Totales
-                </h3>
-                <p className="text-4xl font-bold">
-                  {MXN.format(totalHistoricSales)}
-                </p>
-              </div>
-              <div className="flex flex-col items-start">
-                <h3 className="text-sm font-medium text-muted-foreground">
-                  Propinas Totales
-                </h3>
-                <p className="text-2xl font-bold">
-                  {MXN.format(totalHistoricTips)}
-                </p>
-              </div>
-              <div className="flex flex-col items-start">
-                <h3 className="text-sm font-medium text-muted-foreground">
-                  Descuentos Totales
-                </h3>
-                <p className="text-2xl font-bold">
-                  {MXN.format(totalHistoricDiscounts)}
-                </p>
-              </div>
-              <div className="flex flex-col items-start">
-                <h3 className="text-sm font-medium text-muted-foreground">
-                  Órdenes Totales
-                </h3>
-                <p className="text-2xl font-bold">{totalHistoricOrderCount}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="sm:col-span-2 lg:col-span-2">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 auto-rows-auto">
+       
+        <Card className="col-span-2 row-span-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Ventas del período
+              Ventas
             </CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{MXN.format(totalSales)}</div>
+            <div className="text-4xl font-bold">{MXN.format(totalSales)}</div>
             <p className="text-xs text-muted-foreground mt-1">
               {((totalSales / totalHistoricSales) * 100).toFixed(2)}% del total
               histórico
             </p>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Descuentos
+            </CardTitle>
+            <Percent className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {MXN.format(totalDiscounts)}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Propinas
+            </CardTitle>
+            <Coins className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{MXN.format(totalTips)}</div>
+          </CardContent>
+        </Card>
+      
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Órdenes 
+            </CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{orderCount}</div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -136,6 +134,7 @@ export function OverviewCards({
             <div className="text-2xl font-bold">{activeOrders}</div>
           </CardContent>
         </Card>
+     
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -147,41 +146,19 @@ export function OverviewCards({
             <div className="text-2xl font-bold">{completedOrders}</div>
           </CardContent>
         </Card>
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Propinas totales
+              Órdenes canceladas
             </CardTitle>
-            <Coins className="h-4 w-4 text-muted-foreground" />
+            <XCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{MXN.format(totalTips)}</div>
+            <div className="text-2xl font-bold">{cancelledOrders}</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Descuentos totales
-            </CardTitle>
-            <Percent className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {MXN.format(totalDiscounts)}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Órdenes totales
-            </CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{orderCount}</div>
-          </CardContent>
-        </Card>
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -195,28 +172,7 @@ export function OverviewCards({
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Tasa de conversión
-            </CardTitle>
-            <Percent className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{conversionRate}%</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Órdenes canceladas
-            </CardTitle>
-            <XCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{cancelledOrders}</div>
-          </CardContent>
-        </Card>
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -230,7 +186,58 @@ export function OverviewCards({
             </div>
           </CardContent>
         </Card>
-        |
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Tasa de conversión
+            </CardTitle>
+            <Percent className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{conversionRate}%</div>
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-full">
+          <CardHeader>
+            <CardTitle>Resumen Histórico</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex flex-col items-start">
+                <h3 className="text-md font-medium text-muted-foreground">
+                  Ventas totales
+                </h3>
+                <p className="text-4xl font-bold">
+                  {MXN.format(totalHistoricSales)}
+                </p>
+              </div>
+              <div className="flex flex-col items-start">
+                <h3 className="text-sm font-medium text-muted-foreground">
+                  Propinas totales
+                </h3>
+                <p className="text-2xl font-bold">
+                  {MXN.format(totalHistoricTips)}
+                </p>
+              </div>
+              <div className="flex flex-col items-start">
+                <h3 className="text-sm font-medium text-muted-foreground">
+                  Descuentos totales
+                </h3>
+                <p className="text-2xl font-bold">
+                  {MXN.format(totalHistoricDiscounts)}
+                </p>
+              </div>
+              <div className="flex flex-col items-start">
+                <h3 className="text-sm font-medium text-muted-foreground">
+                  Órdenes totales
+                </h3>
+                <p className="text-2xl font-bold">{totalHistoricOrderCount}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
       <Accordion type="multiple" className="w-full">
         <AccordionItem value="item-1">
@@ -294,7 +301,7 @@ export function OverviewCards({
                     }}
                     className="h-[300px] w-full"
                   >
-                    <ResponsiveContainer width="100%" height="100%">
+                   
                       <BarChart
                         data={topSellingItems}
                         layout="vertical"
@@ -310,7 +317,6 @@ export function OverviewCards({
                           name="Cantidad"
                         />
                       </BarChart>
-                    </ResponsiveContainer>
                   </ChartContainer>
                   <ChartContainer
                     config={{
@@ -321,7 +327,6 @@ export function OverviewCards({
                     }}
                     className="h-[300px]"
                   >
-                    <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={topSellingItems}
                         layout="vertical"
@@ -340,7 +345,6 @@ export function OverviewCards({
                           name="Ingresos"
                         />
                       </BarChart>
-                    </ResponsiveContainer>
                   </ChartContainer>
                 </div>
               </CardContent>

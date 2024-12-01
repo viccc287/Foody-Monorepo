@@ -12,11 +12,18 @@ import orderItemRoutes from "./routes/orderItemRoutes.js";
 import configRoutes from "./routes/configRoutes.js";
 import seed from "./database/seed.js";
 import { authenticate } from "./middleware/auth.js";
+import path from "path";
 
 const app = express();
 
 app.use(express.json());
 app.use(cors());
+
+app.use((req, res, next) => {
+    req.io = app.get("io");
+    next();
+  });
+  
 app.use("/authenticate", authenticateRoutes);
 
 /* app.use(authenticate);

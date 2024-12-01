@@ -12,10 +12,10 @@ import { formatDistanceToNow } from "date-fns";
 
 import { es } from "date-fns/locale";
 
-import type { EnhancedOrder, AgentFullName } from "@/types";
+import type { Order, AgentFullName } from "@/types";
 
 interface RecentOrdersTableProps {
-  orders: EnhancedOrder[];
+  orders: Order[];
   agentNames: AgentFullName[];
 }
 
@@ -33,7 +33,7 @@ const MXN = new Intl.NumberFormat("es-MX", {
 
 
 
-const sortOrdersByDate = (orders: EnhancedOrder[]) => {
+const sortOrdersByDate = (orders: Order[]) => {
   return orders.sort((a, b) => {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });

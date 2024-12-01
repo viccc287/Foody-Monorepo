@@ -1,24 +1,24 @@
+import { AppSidebar } from "@/components/AppSidebar";
+import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
+import { Toaster } from "@/components/ui/toaster";
+import Agents from "@/pages/Agents";
+import Categories from "@/pages/Categories";
+import Login from "@/pages/Login";
+import MenuItems from "@/pages/MenuItems";
+import Orders from "@/pages/Orders";
+import Promos from "@/pages/Promos";
+import Stock from "@/pages/Stock";
+import Suppliers from "@/pages/Suppliers";
 import {
+  Navigate,
+  Route,
   BrowserRouter as Router,
   Routes,
-  Route,
-  Navigate,
   useLocation,
 } from "react-router-dom";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/AppSidebar";
-import { Toaster } from "@/components/ui/toaster";
-import MenuItems from "@/pages/MenuItems";
-import Agents from "@/pages/Agents";
-import Stock from "@/pages/Stock";
-import Categories from "@/pages/Categories";
-import Suppliers from "@/pages/Suppliers";
-import Promos from "@/pages/Promos";
-import Login from "@/pages/Login";
-import Orders from "@/pages/Orders";
-import TokenService from "./services/tokenService";
-import History from "./pages/History";
 import Dashboard from "./pages/Dashboard";
+import History from "./pages/History";
+import TokenService from "./services/tokenService";
 
 const ROUTE_ROLES = {
   "/menu-items": ["manager"],
@@ -32,7 +32,7 @@ const ROUTE_ROLES = {
 };
 
 import { ReactNode } from "react";
-import { ScrollArea } from "./components/ui/scroll-area";
+import { useIsMobile } from "./hooks/use-mobile";
 
 interface RoleBasedRouteProps {
   children: ReactNode;
@@ -42,7 +42,6 @@ interface RoleBasedRouteProps {
 function RoleBasedRoute({ children, path }: RoleBasedRouteProps) {
   const userInfo = TokenService.getUserInfo();
   const userRole = userInfo?.role || "";
-
   if (!ROUTE_ROLES[path]?.includes(userRole)) {
     return <Navigate to="/" replace />;
   }
@@ -59,15 +58,16 @@ function AppLayout() {
   const location = useLocation();
   const isLoginRoute = location.pathname === "/login";
   const userInfo = TokenService.getUserInfo();
+  const isMobile = useIsMobile();
 
   return (
     <SidebarProvider>
       <Toaster />
       {!isLoginRoute && userInfo && <AppSidebar />}
-      <main className="w-full h-[100svh] overflow-auto p-6 ">
-        <ScrollArea className="h-full w-full">
-        <div className="flex flex-col h-full ">
-          {!isLoginRoute && userInfo && <SidebarTrigger />}
+      <main className="w-full h-[100svh] p-6 flex overflow-auto ">
+        <div className="size-full">
+          {isMobile && <SidebarTrigger />}
+          
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route
@@ -75,12 +75,7 @@ function AppLayout() {
               element={
                 <PrivateRoute>
                   <Routes>
-                    <Route
-                      path="/"
-                      element={
-                       <Dashboard/>
-                      }
-                    />
+                    <Route path="/" element={<Dashboard />} />
                     <Route
                       path="/menu-items"
                       element={
@@ -150,8 +145,7 @@ function AppLayout() {
               }
             />
           </Routes>
-          </div>
-        </ScrollArea>
+        </div>
       </main>
     </SidebarProvider>
   );

@@ -1,6 +1,7 @@
 export interface NewStockItem {
   name: string;
   stock: number;
+  minStock: number;
   unit: string;
   isActive: boolean;
   categoryId: number | undefined;

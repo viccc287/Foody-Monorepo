@@ -58,7 +58,7 @@ type Category = {
 
 const printLocations = ["Cocina", "Caja", "Barra"];
 
-const units = ["orden", "pieza", "porción", "vaso", "botella", "kg", "g", "l", "ml", "acción"];
+const units = ["orden", "pieza", "porción", "vaso", "combo", "botella", "kg", "g", "l", "ml", "acción"];
 
 const formSchema = z.object({
   name: z.string().trim().min(1, "Nombre requerido"),

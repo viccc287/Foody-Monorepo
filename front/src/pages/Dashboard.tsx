@@ -11,7 +11,7 @@ import { useAlert } from "@/lib/useAlert";
 import useDashboardStats from "@/lib/useDashboardStats";
 import type {
   AgentFullName,
-  EnhancedOrder,
+  Order,
   OrderPaginatedResponse,
   TotalHistoricValues,
 } from "@/types";
@@ -73,14 +73,14 @@ const fetchOrders = async (
 
 const fetchOrdersByAgentId = async (
   agentId: number
-): Promise<EnhancedOrder[]> => {
+): Promise<Order[]> => {
   if (!agentId) return [];
   const response = await fetch(
     `${BASE_FETCH_URL}/active-orders-by-agent/${agentId}`
   );
   const data = await response.json();
   if (!response.ok) throw new Error("Error al cargar las órdenes");
-  const ordersData: EnhancedOrder[] = data.orders;
+  const ordersData: Order[] = data.orders;
   return ordersData;
 };
 
@@ -100,8 +100,7 @@ const elevatedRoles = ["manager", "cashier"];
 function Dashboard() {
   const [userInfo, setUserInfo] = useState(TokenService.getUserInfo());
   const [agentNames, setAgentNames] = useState<AgentFullName[]>([]);
-  const [orders, setOrders] = useState<EnhancedOrder[]>([]);
-  const [filteredOrders, setFilteredOrders] = useState<EnhancedOrder[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [totalHistoricValues, setTotalHistoricValues] =
     useState<TotalHistoricValues | null>(null);
@@ -210,7 +209,7 @@ function Dashboard() {
         />
       )}
 
-      <Card>
+      <Card className="w-full">
         <CardHeader>
           <CardTitle>
             {isElevatedUser ? "Órdenes filtradas" : "Tus órdenes activas"}

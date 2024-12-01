@@ -1,4 +1,6 @@
 import {
+  ArrowLeft,
+  ArrowRight,
   Box,
   ChevronUp,
   ClipboardList,
@@ -9,7 +11,7 @@ import {
   Truck,
   User,
   Users,
-  Utensils
+  Utensils,
 } from "lucide-react";
 
 import {
@@ -37,6 +39,7 @@ import tokenService from "@/services/tokenService.ts";
 import { useEffect, useState } from "react";
 
 import logoUrl from "/restaurantlogo.jpg";
+import { Button } from "./ui/button";
 
 const mainItems = [
   {
@@ -49,7 +52,7 @@ const mainItems = [
     title: "Órdenes",
     url: "orders",
     icon: ClipboardList,
-    allowedRoles: ["manager", "cashier", "waiter"],
+    allowedRoles: ["manager", "cashier", "waiter", "cook"],
   },
 ];
 
@@ -101,8 +104,10 @@ const historyItems = [
   },
 ];
 
+const RESTAURANT_NAME = import.meta.env.VITE_RESTAURANT_NAME;
+
 export function AppSidebar() {
-  const { open } = useSidebar();
+  const { open, toggleSidebar } = useSidebar();
   const navigate = useNavigate();
 
   const [userInfo, setUserInfo] = useState(tokenService.getUserInfo());
@@ -120,6 +125,26 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem className="flex w-full justify-end">
+                <SidebarMenuButton asChild>
+                  <div className="flex justify-between">
+                    {open && (
+                      <span className="text-lg font-bold">
+                        {RESTAURANT_NAME}
+                      </span>
+                    )}
+                    <Button size="icon" variant="ghost" onClick={toggleSidebar}>
+                      {open ? <ArrowLeft /> : <ArrowRight />}
+                    </Button>
+                  </div>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
         <SidebarGroup>
           <SidebarGroupLabel>Restaurante</SidebarGroupLabel>
           <SidebarGroupContent>

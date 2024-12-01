@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS StockItem (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     stock DECIMAL NOT NULL,
+    minStock DECIMAL DEFAULT 0,
     unit TEXT NOT NULL,
     isActive BOOLEAN DEFAULT 1,
     categoryId INTEGER NOT NULL,
@@ -56,7 +57,8 @@ CREATE TABLE IF NOT EXISTS "Order" (
     discountTotal DECIMAL DEFAULT 0,
     total DECIMAL NOT NULL,
     tip DECIMAL DEFAULT 0,
-    createdAt DATETIME,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
     paymentMethod TEXT CHECK (paymentMethod IN ('cash', 'card')),
     cancelledAt DATETIME,
     cancelReason TEXT,
@@ -64,6 +66,7 @@ CREATE TABLE IF NOT EXISTS "Order" (
     claimedById INTEGER,
     billedById INTEGER,
     billedAt DATETIME,
+    ready BOOLEAN DEFAULT 0,
     FOREIGN KEY (claimedById) REFERENCES Agent (id),
     FOREIGN KEY (billedById) REFERENCES Agent (id)
 );
@@ -81,8 +84,10 @@ CREATE TABLE IF NOT EXISTS OrderItem (
     promoName TEXT,
     comments TEXT,
     createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
     quantityHistory TEXT DEFAULT '[]',
     appliedPromos TEXT DEFAULT '[]',
+    readyQuantity INTEGER DEFAULT 0,
 
     FOREIGN KEY (menuItemId) REFERENCES MenuItem (id),
     FOREIGN KEY (orderId) REFERENCES "Order" (id) ON DELETE CASCADE

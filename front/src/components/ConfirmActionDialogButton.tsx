@@ -55,6 +55,7 @@ function ConfirmActionDialogButton({
     if (requireElevation) {
       if (pin === validPin) {
         onConfirm();
+        setOpen(false);
         setPin("");
         setError("");
       } else {

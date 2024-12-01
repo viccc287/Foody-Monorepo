@@ -1,4 +1,5 @@
 export interface NewOrder {
+  claimedById: number | null | undefined;
   customer: string;
 }
 
@@ -21,16 +22,13 @@ export interface Order extends NewOrder {
   total: number;
   tip: number;
   createdAt: string;
+  updatedAt: string;
   paymentMethod: string | null;
   cancelledAt: string | null;
   cancelReason: string | null;
   status: string;
-  claimedById: number | null;
   billedById: number | null;
-  orderItems: OrderItem[];
-}
-
-export interface EnhancedOrder extends Order {
+  ready: boolean;
   orderItems: OrderItem[];
 }
 
@@ -50,7 +48,11 @@ export interface OrderItem extends NewOrderItem {
   promoName: string | null;
   appliedPromos: AppliedPromo[];
   quantityHistory: QuantityHistory[];
+  createdAt: string;
+  updatedAt: string;
+  readyQuantity: number;
 }
+
 
 interface AppliedPromo {
   promoId: number;

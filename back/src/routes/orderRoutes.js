@@ -175,9 +175,12 @@ router.post("/", (req, res) => {
   try {
     const order = new Order(req.body);
     order.createdAt = new Date().toISOString();
+    order.updatedAt = new Date().toISOString();
     order.save();
+    const enhancedOrder = order.getEnhancedOrder();
+    req.io.emit("orderChanged", { action: "created", order: enhancedOrder });
 
-    res.status(201).json(order);
+    res.status(201).json(enhancedOrder);
   } catch (error) {
     res.status(500).json({ error: "Failed to create order. " + error.message });
   }
@@ -190,7 +193,11 @@ router.put("/:id", (req, res) => {
     const order = Order.getById(Number(id));
     if (order) {
       Object.assign(order, req.body);
+      order.updatedAt = new Date().toISOString();
       order.save();
+      const enhancedOrder = order.getEnhancedOrder();
+      req.io.emit("orderChanged", { action: "updated", order: enhancedOrder });
+
       res.json({ message: "Order updated successfully." });
     } else {
       res.status(404).json({ error: "Order not found." });
@@ -207,6 +214,7 @@ router.delete("/:id", (req, res) => {
     const order = Order.getById(Number(id));
     if (order) {
       order.delete();
+      req.io.emit("orderChanged", { action: "deleted", orderId: id });
       res.json({ message: "Order deleted successfully." });
     } else {
       res.status(404).json({ error: "Order not found." });
@@ -247,6 +255,10 @@ router.put("/:id/charge", async (req, res) => {
     order.updateTotals();
     order.save();
 
+    const enhancedOrder = order.getEnhancedOrder();
+
+    req.io.emit("orderChanged", { action: "updated", order: enhancedOrder });
+
     res.json({ message: "Order charged successfully." });
   } catch (error) {
     res.status(500).json({ error: "Failed to charge order. " + error.message });
@@ -283,6 +295,10 @@ router.put("/:id/cancel", async (req, res) => {
       item.delete();
     });
 
+    const enhancedOrder = order.getEnhancedOrder();
+
+    req.io.emit("orderChanged", { action: "updated", order: enhancedOrder });
+
     res.status(200).json({ message: "Order cancelled successfully", order });
   } catch (error) {
     console.log(error);
@@ -304,6 +320,10 @@ router.put("/:id/unpay", async (req, res) => {
     order.billedById = null;
     order.billedAt = null;
     order.save();
+
+    const enhancedOrder = order.getEnhancedOrder();
+
+    req.io.emit("orderChanged", { action: "updated", order: enhancedOrder });
 
     res.json({ message: "Order status updated successfully." });
   } catch (error) {
@@ -334,6 +354,8 @@ router.patch("/:id/tip", (req, res) => {
     order.save();
 
     const enhancedOrder = order.getEnhancedOrder();
+    
+    req.io.emit("orderChanged", { action: "updated", order: enhancedOrder });
 
     res.json({
       message: "Tip added successfully",

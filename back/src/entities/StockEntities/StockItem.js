@@ -3,9 +3,10 @@ import db from "../../database/connection.js";
 class StockItem {
   static tableName = "StockItem";
 
-  constructor({ id, name, stock, unit, isActive, categoryId, supplierId, cost }) {
+  constructor({ id, name, stock, minStock, unit, isActive, categoryId, supplierId, cost }) {
     this.id = id || null;
     this.name = name;
+    this.minStock = minStock;
     this.stock = stock;
     this.unit = unit;
     this.isActive = !!isActive;
@@ -37,12 +38,13 @@ class StockItem {
 
   #createRecord() {
     const stmt = db.prepare(
-      `INSERT INTO ${StockItem.tableName} (name, stock, unit, isActive, categoryId, supplierId, cost)
-            VALUES (?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO ${StockItem.tableName} (name, stock, minStock, unit, isActive, categoryId, supplierId, cost)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     );
     const result = stmt.run(
       this.name,
       this.stock,
+      this.minStock,
       this.unit,
       this.isActive ? 1 : 0,
       this.categoryId,
@@ -56,12 +58,13 @@ class StockItem {
   #updateRecord() {
     const stmt = db.prepare(
       `UPDATE ${StockItem.tableName}
-            SET name = ?, stock = ?, unit = ?, isActive = ?, categoryId = ?, supplierId = ?, cost = ?
+            SET name = ?, stock = ?, minStock = ?, unit = ?, isActive = ?, categoryId = ?, supplierId = ?, cost = ?
             WHERE id = ?`
     );
     const result = stmt.run(
       this.name,
       this.stock,
+      this.minStock,
       this.unit,
       this.isActive ? 1 : 0,
       this.categoryId,

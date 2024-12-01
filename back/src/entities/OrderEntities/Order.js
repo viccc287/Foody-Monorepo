@@ -12,6 +12,7 @@ class Order {
     total,
     tip,
     createdAt,
+    updatedAt,
     paymentMethod,
     cancelledAt,
     cancelReason,
@@ -19,6 +20,7 @@ class Order {
     claimedById,
     billedById,
     billedAt,
+    ready,
   }) {
     this.id = id || null;
     this.customer = customer;
@@ -27,6 +29,7 @@ class Order {
     this.total = total || 0;
     this.tip = tip || 0;
     this.createdAt = createdAt || null;
+    this.updatedAt = updatedAt || null;
     this.paymentMethod = paymentMethod || null;
     this.cancelledAt = cancelledAt || null;
     this.cancelReason = cancelReason || null;
@@ -34,6 +37,7 @@ class Order {
     this.claimedById = claimedById || null;
     this.billedById = billedById || null;
     this.billedAt = billedAt || null;
+    this.ready = !!ready;
   }
 
   static getAll() {
@@ -252,8 +256,8 @@ class Order {
 
   #createRecord() {
     const stmt = db.prepare(
-      `INSERT INTO ${Order.tableName} (customer, subtotal, discountTotal, total, tip, paymentMethod, status, claimedById, billedById, billedAt, createdAt)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)`
+      `INSERT INTO ${Order.tableName} (customer, subtotal, discountTotal, total, tip, paymentMethod, status, claimedById, billedById, billedAt, createdAt, updatedAt, ready)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
     const result = stmt.run(
       this.customer,
@@ -266,7 +270,9 @@ class Order {
       this.claimedById,
       this.billedById,
       this.billedAt,
-      this.createdAt
+      this.createdAt,
+      this.updatedAt,
+      this.ready ? 1 : 0
     );
     this.id = result.lastInsertRowid;
     return this.id;
@@ -275,7 +281,7 @@ class Order {
   #updateRecord() {
     const stmt = db.prepare(
       `UPDATE ${Order.tableName}
-            SET customer = ?, subtotal = ?, discountTotal = ?, total = ?, tip = ?, paymentMethod = ?, cancelledAt = ?, cancelReason = ?, status = ?, claimedById = ?, billedById = ?, billedAt = ?, createdAt = ?
+            SET customer = ?, subtotal = ?, discountTotal = ?, total = ?, tip = ?, paymentMethod = ?, cancelledAt = ?, cancelReason = ?, status = ?, claimedById = ?, billedById = ?, billedAt = ?, createdAt = ?, updatedAt = ?, ready = ?
             WHERE id = ?`
     );
     const result = stmt.run(
@@ -292,6 +298,8 @@ class Order {
       this.billedById,
       this.billedAt,
       this.createdAt,
+      this.updatedAt,
+      this.ready ? 1 : 0,
       this.id
     );
     return result.changes > 0;

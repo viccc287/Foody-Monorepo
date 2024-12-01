@@ -1,6 +1,9 @@
 import db from "../../database/connection.js";
 import MenuItem from "../StockEntities/MenuItem.js";
 import Promo from "../PromoEntities/Promo.js";
+import Ingredient from "../StockEntities/Ingredient.js";
+import StockItem from "../StockEntities/StockItem.js";
+import Decimal from "decimal.js";
 
 class OrderItem {
   static tableName = "OrderItem";
@@ -18,6 +21,9 @@ class OrderItem {
     comments,
     quantityHistory = "[]",
     appliedPromos = "[]",
+    createdAt,
+    updatedAt,
+    readyQuantity,
   }) {
     this.id = id || null;
     this.menuItemId = menuItemId;
@@ -29,8 +35,11 @@ class OrderItem {
     this.total = total || subtotal - this.discountApplied;
     this.promoName = promoName || null;
     this.comments = comments || null;
-    this.quantityHistory = JSON.parse(quantityHistory);
-    this.appliedPromos = JSON.parse(appliedPromos);
+    this.quantityHistory = JSON.parse(quantityHistory) || [];
+    this.appliedPromos = JSON.parse(appliedPromos) || [];
+    this.createdAt = createdAt || new Date().toISOString();
+    this.updatedAt = updatedAt || new Date().toISOString();
+    this.readyQuantity = readyQuantity || 0;
   }
 
   static getAll() {
@@ -150,6 +159,57 @@ class OrderItem {
     this.total = this.subtotal - this.discountApplied;
   }
 
+  checkStock(quantity) {
+    const ingredients = Ingredient.getByMenuItemId(this.menuItemId);
+    
+    const notEnoughStockItems = [];
+    const notActiveItems = [];
+    const lowStockItems = [];
+    
+    // For negative quantities (removing items), we don't need to check stock
+    if (quantity > 0) {
+        // Check stock and active status only when adding items
+        for (const ingredient of ingredients) {
+            const stockItem = StockItem.getById(ingredient.inventoryProductId);
+            
+            if (!stockItem.isActive) {
+                notActiveItems.push(stockItem);
+                continue;
+            }
+            
+            if (stockItem.stock - ingredient.quantityUsed * quantity < 0) {
+                notEnoughStockItems.push({
+                    ...stockItem,
+                    required: ingredient.quantityUsed * quantity,
+                });
+                continue;
+            }
+            
+            if (stockItem.stock - ingredient.quantityUsed * quantity < stockItem.minStock) {
+                lowStockItems.push(stockItem);
+            }
+        }
+    }
+  
+    
+    // Update stock if there are no issues or if we're removing items
+    if (notEnoughStockItems.length === 0 && notActiveItems.length === 0) {
+        for (const ingredient of ingredients) {
+            const stockItem = StockItem.getById(ingredient.inventoryProductId);
+            const stock = new Decimal(stockItem.stock);
+            const quantityUsed = new Decimal(ingredient.quantityUsed);
+            const qty = new Decimal(quantity);
+            
+            // If quantity is negative, add to stock; if positive, subtract from stock
+            stockItem.stock = stock.plus(quantityUsed.times(qty).negated()).toNumber();
+            
+            stockItem.save();
+        }
+    }
+    
+    return { notEnoughStockItems, notActiveItems, lowStockItems };
+}
+
 
   save() {
     if (this.id) {
@@ -188,8 +248,8 @@ class OrderItem {
 
   #createRecord() {
     const stmt = db.prepare(
-      `INSERT INTO ${OrderItem.tableName} (menuItemId, orderId, promoId, quantity, subtotal, discountApplied, total, promoName, comments)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO ${OrderItem.tableName} (menuItemId, orderId, promoId, quantity, subtotal, discountApplied, total, promoName, comments, quantityHistory, appliedPromos, createdAt, updatedAt, readyQuantity)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
     const result = stmt.run(
       this.menuItemId,
@@ -200,7 +260,12 @@ class OrderItem {
       this.discountApplied,
       this.total,
       this.promoName,
-      this.comments
+      this.comments,
+      JSON.stringify(this.quantityHistory),
+      JSON.stringify(this.appliedPromos),
+      this.createdAt,
+      this.updatedAt,
+      this.readyQuantity
     );
     this.id = result.lastInsertRowid;
     return this.id;
@@ -209,7 +274,7 @@ class OrderItem {
   #updateRecord() {
     const stmt = db.prepare(
       `UPDATE ${OrderItem.tableName}
-            SET menuItemId = ?, orderId = ?, promoId = ?, quantity = ?, subtotal = ?, discountApplied = ?, total = ?, promoName = ?, comments = ?, quantityHistory = ?, appliedPromos = ?
+            SET menuItemId = ?, orderId = ?, promoId = ?, quantity = ?, subtotal = ?, discountApplied = ?, total = ?, promoName = ?, comments = ?, quantityHistory = ?, appliedPromos = ?, createdAt = ?, updatedAt = ?, readyQuantity = ?
             WHERE id = ?`
     );
     const result = stmt.run(
@@ -224,6 +289,9 @@ class OrderItem {
       this.comments,
       JSON.stringify(this.quantityHistory),
       JSON.stringify(this.appliedPromos),
+      this.createdAt,
+      this.updatedAt,
+      this.readyQuantity,
       this.id
     );
     return result.changes > 0;

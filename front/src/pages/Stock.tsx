@@ -57,10 +57,13 @@ const formSchema = z.object({
   stock: z
     .number({ invalid_type_error: "Stock requerido" })
     .min(0, "El stock debe ser mayor o igual a 0"),
+  minStock: z
+    .number({ invalid_type_error: "Si no deseas alerta, ingresa 0" })
+    .min(0, "El stock mínimo debe ser mayor o igual a 0"),
   unit: z.string().trim().min(1, "Unidad requerida"),
   isActive: z.boolean(),
-  categoryId: z.number(),
-  supplierId: z.number(),
+  categoryId: z.number({ required_error: "Categoría requerida" }),
+  supplierId: z.number({ required_error: "Proveedor requerido" }),
   cost: z
     .number({ invalid_type_error: "Costo requerido" })
     .min(0, "El costo debe ser mayor o igual a 0")
@@ -134,6 +137,7 @@ const tableHeaderColumns: SortableColumn<StockItem>[] = [
   { key: "name", label: "Nombre" },
   { key: "stock", label: "Stock" },
   { key: "unit", label: "Unidad" },
+  { key: "minStock", label: "Stock mínimo" },
   { key: "cost", label: "Costo" },
   { key: "isActive", label: "Estado" },
   { key: "categoryId", label: "Categoría" },
@@ -152,12 +156,12 @@ export default function Stock() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<StockItem | null>(null);
   const { sortConfig, sortItems } = useSortConfig<StockItem>(setItems);
-  const {alert} = useAlert();
-  
+  const { alert } = useAlert();
 
   const defaultValues: NewStockItem = {
     name: "",
     stock: 0,
+    minStock: 0,
     unit: "",
     isActive: true,
     categoryId: undefined,
@@ -303,6 +307,7 @@ export default function Stock() {
                       </FormItem>
                     )}
                   />
+
                   <FormField
                     control={form.control}
                     name="unit"
@@ -325,6 +330,26 @@ export default function Stock() {
                               ))}
                             </SelectContent>
                           </Select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="minStock"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Alertarme cuando solo queden</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            type="number"
+                            placeholder="Cantidad mínima en stock"
+                            onChange={(e) =>
+                              field.onChange(parseFloat(e.target.value))
+                            }
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -464,6 +489,7 @@ export default function Stock() {
                 <TableCell>{item.name}</TableCell>
                 <TableCell>{item.stock}</TableCell>
                 <TableCell>{item.unit}</TableCell>
+                <TableCell>{item.minStock}</TableCell>
                 <TableCell>{MXN.format(item.cost)}</TableCell>
                 <TableCell>
                   <Badge
@@ -496,9 +522,9 @@ export default function Stock() {
                       description="¿Estás seguro de que deseas eliminar este artículo?"
                       variant="destructive"
                       requireElevation
-                      size='icon'
+                      size="icon"
                     >
-                      <Trash2 className="h-4 w-4"  />
+                      <Trash2 className="h-4 w-4" />
                     </ConfirmActionDialogButton>
                   </div>
                 </TableCell>
