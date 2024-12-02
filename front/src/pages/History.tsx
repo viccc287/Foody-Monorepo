@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import useSortConfig from "@/lib/useSortConfig";
 
 import type { OrderPaginatedResponse, SortableColumn } from "@/types";
+import { CSVLink } from "react-csv";
 
 import SortableTableHeadSet from "@/components/SortableTableHeadSet";
 
@@ -17,6 +18,9 @@ import PaginationNav from "@/components/PaginationNav";
 import { Badge } from "@/components/ui/badge";
 import { useAlert } from "@/lib/useAlert";
 import type { AgentFullName, MenuItem, Order } from "@/types";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { Button } from "@/components/ui/button";
 
 const BASE_FETCH_URL = import.meta.env.VITE_SERVER_URL + "/orders";
 const ORDER_LIMIT = 15;
@@ -69,7 +73,10 @@ const tableHeaderColumns: SortableColumn<Order>[] = [
   { key: "total", label: "Total" },
   { key: "tip", label: "Propina" },
   { key: "status", label: "Estado" },
-  { key: "createdAt", label: "Fecha" },
+  { key: "createdAt", label: "Creada" },
+  { key: "updatedAt", label: "Modificada" },
+  { key: "billedAt", label: "Cobrada" },
+  { key: "claimedById", label: "Creada por" },
   { key: "billedById", label: "Cobrada por" },
   { key: "orderItems", label: "Artículos" },
 ];
@@ -80,13 +87,43 @@ const statuses: { [key: string]: string } = {
   cancelled: "Cancelada",
 };
 
+const prepareDataForExport = (
+  orders: Order[],
+  findAgentFullName: (id: number | null) => string,
+  findMenuItemName: (id: number) => string
+) => {
+  return orders.map((order) => ({
+    ID: order.id,
+    Cliente: order.customer,
+    Subtotal: order.subtotal,
+    Descuento: order.discountTotal,
+    Total: order.total,
+    Propina: order.tip,
+    Estado: statuses[order.status] || "Desconocido",
+    Creada: format(order.createdAt, "dd/MM/yy HH:mm", { locale: es }),
+    Modificada: format(order.updatedAt, "dd/MM/yy HH:mm", { locale: es }),
+    Cobrada: order.billedAt
+      ? format(order.billedAt, "dd/MM/yy HH:mm", { locale: es })
+      : "",
+    Cancelada: order.cancelledAt
+      ? format(order.cancelledAt, "dd/MM/yy HH:mm", { locale: es })
+      : "",
+    "Razón de cancelación": order.cancelReason || "",
+    "Creada por": order.claimedById ? findAgentFullName(order.claimedById) : "",
+    "Cobrada por": order.billedById ? findAgentFullName(order.billedById) : "",
+    Artículos: order.orderItems
+      .map((item) => `${item.quantity} ${findMenuItemName(item.menuItemId)}`)
+      .join(", "),
+  }));
+};
+
 export default function History() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [agentNames, setAgentNames] = useState<AgentFullName[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const { sortConfig, sortItems } = useSortConfig<Order>(setOrders);
+  const { sortConfig, sortItems: sortOrders } = useSortConfig<Order>(setOrders);
 
   const { alert } = useAlert();
 
@@ -102,7 +139,7 @@ export default function History() {
 
     fetchAgentNames().then(setAgentNames);
     fetchMenuItems().then(setMenuItems);
-  }, []);
+  }, [alert]);
 
   useEffect(() => {
     fetchOrders(page)
@@ -113,7 +150,7 @@ export default function History() {
       .catch((error) => {
         alert("Error", error.message, "error");
       });
-  }, [page]);
+  }, [page, alert]);
 
   const findAgentFullName = (id: number | null) => {
     if (!id) return "Desconocido";
@@ -129,6 +166,19 @@ export default function History() {
   return (
     <div className="container mx-auto py-10 ">
       <h1 className="text-3xl font-bold mb-6">Histórico de Órdenes</h1>
+      <Button className="mb-6">
+        <CSVLink
+          data={prepareDataForExport(
+            orders,
+            findAgentFullName,
+            findMenuItemName
+          )}
+          filename="ordenes_historico.csv"
+        >
+          Exportar CSV completo
+        </CSVLink>
+      </Button>
+
       {orders.length === 0 ? (
         <div className="text-center">No hay órdenes históricas</div>
       ) : (
@@ -144,7 +194,7 @@ export default function History() {
             <TableHeader>
               <TableRow>
                 <SortableTableHeadSet
-                  sortFunction={sortItems}
+                  sortFunction={sortOrders}
                   sortConfig={sortConfig}
                   columns={tableHeaderColumns}
                 />
@@ -178,16 +228,26 @@ export default function History() {
                     </Badge>{" "}
                   </TableCell>
                   <TableCell>
-                    {new Date(order.createdAt).toLocaleString()}
+                    {format(order.createdAt, "dd/MM/yy HH:mm", { locale: es })}
+                  </TableCell>
+                  <TableCell>
+                    {format(order.updatedAt, "dd/MM/yy HH:mm", { locale: es })}
+                  </TableCell>
+                  <TableCell>
+                    {order.billedAt &&
+                      format(order.billedAt, "dd/MM/yy HH:mm", { locale: es })}
+                  </TableCell>
+                  <TableCell>
+                    {order.claimedById && findAgentFullName(order.claimedById)}
                   </TableCell>
                   <TableCell>
                     {order.billedById && findAgentFullName(order.billedById)}
                   </TableCell>
                   <TableCell>
-                    <ul className=" list-disc">
+                    <ul>
                       {order.orderItems.map((item) => (
                         <li key={item.id}>
-                          {item.quantity}x {findMenuItemName(item.menuItemId)}
+                          {item.quantity} {findMenuItemName(item.menuItemId)}
                         </li>
                       ))}
                     </ul>

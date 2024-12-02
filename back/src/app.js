@@ -10,7 +10,6 @@ import supplierRoutes from "./routes/supplierRoutes.js";
 import authenticateRoutes from "./routes/authenticateRoutes.js";
 import orderItemRoutes from "./routes/orderItemRoutes.js";
 import configRoutes from "./routes/configRoutes.js";
-import seed from "./database/seed.js";
 import { authenticate } from "./middleware/auth.js";
 import path from "path";
 
@@ -26,8 +25,8 @@ app.use((req, res, next) => {
   
 app.use("/authenticate", authenticateRoutes);
 
-/* app.use(authenticate);
- */
+app.use(authenticate);
+
 app.use("/items", itemRoutes);
 app.use("/agents", agentRoutes);
 app.use("/menu", menuRoutes);
@@ -39,5 +38,4 @@ app.use("/suppliers", supplierRoutes)
 app.use("/config", configRoutes)
 app.use('/images', express.static('storage/images'));
 
-seed();
 export default app;

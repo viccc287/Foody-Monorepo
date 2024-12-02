@@ -12,11 +12,14 @@ import { formatDistanceToNow } from "date-fns";
 
 import { es } from "date-fns/locale";
 
-import type { Order, AgentFullName } from "@/types";
+import type { Order, AgentFullName, SortableColumn } from "@/types";
+import useSortConfig from "@/lib/useSortConfig";
+import SortableTableHeadSet from "../SortableTableHeadSet";
 
 interface RecentOrdersTableProps {
   orders: Order[];
   agentNames: AgentFullName[];
+  setOrders: React.Dispatch<React.SetStateAction<Order[]>>;
 }
 
 const statuses: { [key: string]: string } = {
@@ -31,18 +34,12 @@ const MXN = new Intl.NumberFormat("es-MX", {
   currency: "MXN",
 });
 
-
-
-const sortOrdersByDate = (orders: Order[]) => {
-  return orders.sort((a, b) => {
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  });
-};
-
 export function RecentOrdersTable({
   orders,
   agentNames,
+  setOrders,
 }: RecentOrdersTableProps) {
+  const { sortConfig, sortItems: sortOrders } = useSortConfig<Order>(setOrders);
 
   const findAgentFullName = (id: number | null) => {
     if (!id) return "Desconocido";
@@ -50,21 +47,30 @@ export function RecentOrdersTable({
     return agent ? `${agent.name} ${agent.lastName}` : "Desconocido";
   };
 
+  const tableHeaderColumns: SortableColumn<Order>[] = [
+    { key: "id", label: "Orden" },
+    { key: "customer", label: "Cliente" },
+    { key: "orderItems", label: "Artículos" },
+    { key: "total", label: "Total" },
+    { key: "status", label: "Estado" },
+    { key: "createdAt", label: "Creada" },
+    { key: "updatedAt", label: "Última actualización" },
+    { key: "claimedById", label: "Creada por" },
+  ];
+
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Orden</TableHead>
-          <TableHead>Cliente</TableHead>
-          <TableHead>Artículos</TableHead>
-          <TableHead>Total</TableHead>
-          <TableHead>Estado</TableHead>
-          <TableHead>Creada</TableHead>
-          <TableHead>Creada por</TableHead>
+          <SortableTableHeadSet
+            columns={tableHeaderColumns}
+            sortConfig={sortConfig}
+            sortFunction={sortOrders}
+          />
         </TableRow>
       </TableHeader>
       <TableBody>
-        {sortOrdersByDate(orders).map((order) => (
+        {orders.map((order) => (
           <TableRow key={order.id}>
             <TableCell>{order.id}</TableCell>
             <TableCell>{order.customer}</TableCell>
@@ -73,18 +79,36 @@ export function RecentOrdersTable({
             <TableCell>
               <Badge
                 className={
-                  order.status === "active" ? "bg-blue-600" : order.status === "paid" ? "bg-green-600" : order.status === "cancelled" ? "bg-red-600" : "bg-yellow-600"
+                  order.status === "active"
+                    ? "bg-blue-600"
+                    : order.status === "paid"
+                    ? "bg-green-600"
+                    : order.status === "cancelled"
+                    ? "bg-red-600"
+                    : "bg-yellow-600"
                 }
               >
                 {statuses[order.status] || "Desconocido"}
               </Badge>
             </TableCell>
-           
 
-            <TableCell className="flex items-center gap-2">
-              {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: es })}
+            <TableCell>
+              {formatDistanceToNow(new Date(order.createdAt), {
+                addSuffix: true,
+                locale: es,
+              })}
             </TableCell>
-            <TableCell>{findAgentFullName(order.claimedById)}</TableCell>
+
+            <TableCell>
+              {formatDistanceToNow(new Date(order.updatedAt), {
+                addSuffix: true,
+                locale: es,
+              })}
+            </TableCell>
+
+            <TableCell>
+              {findAgentFullName(order.claimedById || null)}
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>

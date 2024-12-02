@@ -1,6 +1,5 @@
 import { OverviewCards } from "@/components/dashboard/OverviewCards";
 import { Badge } from "@/components/ui/badge";
-import TokenService from "@/services/tokenService";
 import { useEffect, useState } from "react";
 
 import { RecentOrdersTable } from "@/components/dashboard/RecentOrdersTable";
@@ -11,11 +10,16 @@ import { useAlert } from "@/lib/useAlert";
 import useDashboardStats from "@/lib/useDashboardStats";
 import type {
   AgentFullName,
+  DashboardStats,
   Order,
   OrderPaginatedResponse,
-  TotalHistoricValues,
 } from "@/types";
 import { DateRange } from "react-day-picker";
+import { useUserInfo } from "@/lib/useUserInfo";
+import NoShownIf from "@/components/NoShownIf";
+import { Button } from "@/components/ui/button";
+import { ForkKnife } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const getWelcomeMessage = () => {
   const currentHour = new Date().getHours();
@@ -30,24 +34,8 @@ const getWelcomeMessage = () => {
   }
 };
 
-const rolesMap: {
-  [key: string]: string;
-} = {
-  manager: "Administrador",
-  cashier: "Cajero",
-  waiter: "Mesero",
-  cook: "Cocinero",
-};
-
 const BASE_FETCH_URL = import.meta.env.VITE_SERVER_URL + "/orders";
-const ORDER_LIMIT = 15;
-
-const fetchTotalHistoricValues = async (): Promise<TotalHistoricValues> => {
-  const response = await fetch(`${BASE_FETCH_URL}/total-sales`);
-  const data = await response.json();
-  if (!response.ok) throw new Error("Error al cargar las ventas totales");
-  return data;
-};
+const ORDER_LIMIT = 2;
 
 const fetchOrders = async (
   page: number = 1,
@@ -66,22 +54,8 @@ const fetchOrders = async (
   const response = await fetch(url);
   const data: OrderPaginatedResponse = await response.json();
   if (!response.ok) throw new Error("Error al cargar las órdenes");
-  console.log(data);
 
   return data;
-};
-
-const fetchOrdersByAgentId = async (
-  agentId: number
-): Promise<Order[]> => {
-  if (!agentId) return [];
-  const response = await fetch(
-    `${BASE_FETCH_URL}/active-orders-by-agent/${agentId}`
-  );
-  const data = await response.json();
-  if (!response.ok) throw new Error("Error al cargar las órdenes");
-  const ordersData: Order[] = data.orders;
-  return ordersData;
 };
 
 const fetchAgentNames = async (): Promise<AgentFullName[]> => {
@@ -95,44 +69,32 @@ const fetchAgentNames = async (): Promise<AgentFullName[]> => {
   return data;
 };
 
-const elevatedRoles = ["manager", "cashier"];
-
 function Dashboard() {
-  const [userInfo, setUserInfo] = useState(TokenService.getUserInfo());
   const [agentNames, setAgentNames] = useState<AgentFullName[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
-  const [totalHistoricValues, setTotalHistoricValues] =
-    useState<TotalHistoricValues | null>(null);
-  const [isElevatedUser, setIsElevatedUser] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const { alert } = useAlert();
-  const { data: dashboardStats, error: dashboardStatsError } =
-    useDashboardStats(
-      dateRange?.from?.toISOString(),
-      dateRange?.to?.toISOString()
-    );
+  const { userInfo, isElevatedUser, roleDisplay, isRole } = useUserInfo();
+  const {
+    data: dashboardStats,
+    error: dashboardStatsError,
+    loading: dashboardStatsLoading,
+  } = useDashboardStats(
+    dateRange?.from?.toISOString() || "",
+    dateRange?.to?.toISOString() || "",
+    userInfo?.id,
+    isElevatedUser,
+    isRole("cook")
+  );
 
+  /* DASHBOARD ERRORS */
   useEffect(() => {
     if (dashboardStatsError) {
       alert("Error", dashboardStatsError, "error");
     }
   }, [dashboardStatsError, alert]);
-
-  useEffect(() => {
-    const updatedUserInfo = TokenService.getUserInfo();
-    setUserInfo(updatedUserInfo);
-  }, []);
-
-  /* TOTAL HISTORIC SALES */
-  useEffect(() => {
-    if (isElevatedUser) {
-      fetchTotalHistoricValues()
-        .then(setTotalHistoricValues)
-        .catch((error) => alert("Error", error.message, "error"));
-    }
-  }, [isElevatedUser, alert]);
 
   /* ORDERS */
 
@@ -140,25 +102,6 @@ function Dashboard() {
     if (!userInfo) return;
 
     if (isElevatedUser && dateRange?.from && dateRange?.to) {
-      fetchOrders(1, dateRange.from.toISOString(), dateRange.to.toISOString())
-        .then((response) => {
-          setOrders(response.orders);
-          setTotalPages(response.pagination.totalPages);
-        })
-        .catch(console.error);
-    } else if (!isElevatedUser) {
-      fetchOrdersByAgentId(userInfo.id!).then(setOrders).catch(console.error);
-    }
-
-    fetchAgentNames()
-      .then(setAgentNames)
-      .catch((error) => console.error(error));
-  }, [isElevatedUser, userInfo, dateRange]);
-
-  /* ORDERS PAGE CHANGE */
-
-  useEffect(() => {
-    if (dateRange?.from && dateRange?.to) {
       fetchOrders(
         page,
         dateRange.from.toISOString(),
@@ -168,20 +111,14 @@ function Dashboard() {
           setOrders(response.orders);
           setTotalPages(response.pagination.totalPages);
         })
-        .catch((error) => {
-          alert("Error", error.message, "error");
-        });
+        .catch(console.error);
     }
-  }, [page, dateRange, alert]);
+    fetchAgentNames()
+      .then(setAgentNames)
+      .catch((error) => console.error(error));
+  }, [isElevatedUser, userInfo, dateRange, page]);
 
-  /* USER INFO */
-
-  useEffect(() => {
-    setIsElevatedUser(elevatedRoles.includes(userInfo?.role || ""));
-  }, [userInfo]);
-
-  /* UPDATE CARDS */
-
+  /* DATE RANGE PICKER*/
   const handleDateRangeChange = (newDateRange: DateRange | undefined) => {
     setDateRange(newDateRange);
   };
@@ -194,38 +131,52 @@ function Dashboard() {
           <span className="font-light">{userInfo?.name}</span>
         </h1>
 
-        {userInfo?.role && <Badge>{rolesMap[userInfo.role]}</Badge>}
+        {roleDisplay && <Badge>{roleDisplay}</Badge>}
       </div>
 
-      <DateRangePicker onDateRangeChange={handleDateRangeChange} />
-
-      {isElevatedUser && (
-        <OverviewCards
-          totalHistoricSales={totalHistoricValues?.totalSales || 0}
-          totalHistoricTips={totalHistoricValues?.totalTips || 0}
-          totalHistoricDiscounts={totalHistoricValues?.totalDiscounts || 0}
-          totalHistoricOrderCount={totalHistoricValues?.orderCount || 0}
-          {...dashboardStats}
-        />
+      {isRole("cook") ? (
+        <div className="flex items-center justify-center rounded-lg overflow-hidden h-96">
+          <Link to="/orders">
+            <Button className="w-fit size-lg">
+              <ForkKnife />
+              Ir a la gestión de cocina
+            </Button>
+          </Link>
+        </div>
+      ) : (
+        <>
+          <DateRangePicker onDateRangeChange={handleDateRangeChange} />
+          <OverviewCards
+            {...(dashboardStats as DashboardStats)}
+            loading={dashboardStatsLoading}
+          />
+        </>
       )}
 
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle>
-            {isElevatedUser ? "Órdenes filtradas" : "Tus órdenes activas"}
-            {totalPages > 1 && (
-              <PaginationNav
-                page={page}
-                setPage={setPage}
-                totalPages={totalPages}
-              />
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <RecentOrdersTable orders={orders} agentNames={agentNames} />
-        </CardContent>
-      </Card>
+      {isElevatedUser && (
+        <NoShownIf
+          condition={orders.length === 0}
+          message="No hay órdenes para mostrar"
+        >
+          <Card className="w-full">
+            <CardHeader>
+              <CardTitle>
+                <span>Órdenes del periodo seleccionado</span>
+                {totalPages > 1 && (
+                  <PaginationNav
+                    page={page}
+                    setPage={setPage}
+                    totalPages={totalPages}
+                  />
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <RecentOrdersTable orders={orders} agentNames={agentNames} setOrders={setOrders} />
+            </CardContent>
+          </Card>
+        </NoShownIf>
+      )}
     </div>
   );
 }

@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/select";
 import { useAlert } from "@/lib/useAlert";
 import type { Agent } from "@/types";
+import { Badge } from "@/components/ui/badge";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -52,7 +53,7 @@ interface FormValues {
   image: File | string;
   address: string;
   phone: string;
-  rfc: string;
+  rfc?: string;
   email: string;
   pin: string;
   role: string;
@@ -78,7 +79,7 @@ const formSchema = z.object({
   phone: z
     .string()
     .regex(/^(\+?\d{1,3})?[-.●\s]?(\d{10})$/, "Número telefónico inválido"),
-  rfc: z.string().trim().min(12, "RFC debe tener al menos 12 caracteres"),
+  rfc: z.string().trim().optional(),
   email: z.string().trim().email("Correo electrónico inválido"),
   pin: z
     .string()
@@ -468,7 +469,14 @@ export default function AgentPage() {
             onClick={() => handleEdit(agent)}
           >
             <CardHeader>
-              <CardTitle>{`${agent.name} ${agent.lastName}`}</CardTitle>
+              <CardTitle className="flex justify-between items-center">
+                {`${agent.name} ${agent.lastName}`}
+                <Badge
+                  className={agent.isActive ? "bg-green-500" : "bg-red-500"}
+                >
+                  {agent.isActive ? "Activo" : "Inactivo"}
+                </Badge>
+              </CardTitle>
               <CardDescription>
                 {agent.id +
                   " - " +

@@ -1,43 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-import { useAlert } from "@/lib/useAlert";
-import { AgentFullName, MenuItem, Order, OrderItem } from "@/types";
-import { Minus, Plus, RefreshCcw } from "lucide-react";
-import { Button } from "../ui/button";
+import { getProgressColor } from "@/lib/ProgressColor";
 import { cn } from "@/lib/utils";
+import { MenuItem, Order, OrderItem } from "@/types";
+import { Minus, Plus, RefreshCcw } from "lucide-react";
 import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
 import { Progress } from "../ui/progress";
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL;
 
 const ORDERITEMS_FETCH_URL = SERVER_URL + "/order-items";
-
-const updateReady = async (orderItem: OrderItem, readyQuantity: number = 1) => {
-  if (orderItem.readyQuantity + readyQuantity < 0) return null;
-  if (orderItem.readyQuantity + readyQuantity > orderItem.quantity) return null;
-
-  try {
-    const url = `${ORDERITEMS_FETCH_URL}/${orderItem.id}/ready-quantity`;
-    const response = await fetch(url, {
-      method: "PUT",
-      body: JSON.stringify({ readyQuantity }),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-    if (!response.ok)
-      throw new Error("Error al modificar la cantidad de artículos listos");
-
-    const data = await response.json();
-    console.log(data.order);
-    return data.order;
-  } catch (error) {
-    console.error("Error al modificar artículos listos:", error);
-  }
-};
 
 interface CookOrdersPageProps {
   orders: Order[];
@@ -47,30 +23,14 @@ interface CookOrdersPageProps {
   findAgentFullName: (id: number | null | undefined) => string;
 }
 
-const ProgressColor = {
-  VERY_LOW: "bg-red-500",
-  LOW: "bg-amber-500",
-  REGULAR: "bg-yellow-500",
-  HIGH: "bg-lime-500",
-  MAX: "bg-green-500",
-};
-
-const getProgressColor = (progress: number) =>
-  progress < 25
-    ? ProgressColor.VERY_LOW
-    : progress < 50
-    ? ProgressColor.LOW
-    : progress < 75
-    ? ProgressColor.REGULAR
-    : progress < 100
-    ? ProgressColor.HIGH
-    : ProgressColor.MAX;
 const sortOrdersAndItems = (ordersToSort: Order[]) => {
   return ordersToSort
     .sort(
       (a, b) =>
         new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     )
+    .filter((order) => order.orderItems?.length > 0)
+
     .map((order) => ({
       ...order,
       orderItems: order.orderItems?.sort(
@@ -90,8 +50,36 @@ export default function CookOrdersPage({
   const [filter, setFilter] = useState<number | null>(null);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>(orders);
   const [sortedOrders, setSortedOrders] = useState<Order[]>([]);
+  const [loadingUpdate, setLoadingUpdate] = useState(false);
 
-  const { alert } = useAlert();
+  const updateReadyQuantity = useCallback(
+    async (orderItem: OrderItem, readyQuantity: number = 1) => {
+      if (orderItem.readyQuantity + readyQuantity < 0) return null;
+      if (orderItem.readyQuantity + readyQuantity > orderItem.quantity)
+        return null;
+      setLoadingUpdate(true);
+      try {
+        const url = `${ORDERITEMS_FETCH_URL}/${orderItem.id}/ready-quantity`;
+        const response = await fetch(url, {
+          method: "PUT",
+          body: JSON.stringify({ readyQuantity }),
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+        if (!response.ok)
+          throw new Error("Error al modificar la cantidad de artículos listos");
+
+        const data = await response.json();
+        return data.order;
+      } catch (error) {
+        console.error("Error al modificar artículos listos:", error);
+      } finally {
+        setLoadingUpdate(false);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     if (filter) {
@@ -103,7 +91,7 @@ export default function CookOrdersPage({
 
   useEffect(() => {
     setSortedOrders(sortOrdersAndItems(orders));
-  }, [orders, sortOrdersAndItems]);
+  }, [orders]);
 
   return (
     <div className="sm:flex h-full grow flex-col md:flex-row">
@@ -127,7 +115,7 @@ export default function CookOrdersPage({
             >
               <span className="text-ellipsis overflow-hidden">Todas</span>
             </Button>
-            {orders.map((order) => (
+            {sortedOrders.map((order) => (
               <Button
                 variant="outline"
                 key={order.id}
@@ -165,9 +153,9 @@ export default function CookOrdersPage({
                       setFilter(order.id);
                     }}
                   >
-                    {order.customer}
+                    {order.customer} - por {findAgentFullName(order.claimedById)}
                   </span>
-                  <div className="grid grid-cols-[repeat(auto-fit,minmax(400px,1fr))] gap-4 grow bg-gray-100 p-2 rounded-xl">
+                  <div className="grid sm:grid-cols-[repeat(auto-fit,minmax(400px,1fr))] gap-4 grow bg-gray-100 p-2 rounded-xl">
                     {order.orderItems?.map((item) => {
                       const progress =
                         100 * (item.readyQuantity / item.quantity);
@@ -189,7 +177,7 @@ export default function CookOrdersPage({
                               <Badge
                                 className={cn(
                                   getProgressColor(progress),
-                                  "px-3 py-1 text-xs sm:text-sm sm:px-4"
+                                  "px-3 py-1 text-xs sm:text-sm sm:px-4 w-fit"
                                 )}
                               >
                                 {item.readyQuantity >= item.quantity
@@ -204,35 +192,34 @@ export default function CookOrdersPage({
 
                             <div className="flex flex-col sm:flex-row justify-between gap-4">
                               <div className="space-y-3 flex-1">
-                                <span className="text-sm text-muted-foreground">
+                                <span className="text-md text-muted-foreground">
                                   {item.readyQuantity} / {item.quantity} listos
                                 </span>
-
+                           
                                 {item.comments && (
-                                  <p className="text-sm text-muted-foreground font-medium break-words">
+                                  <p className="text-sm font-semibold text-blue-700 break-words">
                                     {item.comments}
                                   </p>
                                 )}
-                                <span className="block text-xs text-muted-foreground">
-                                  {findAgentFullName(order.claimedById)}
-                                </span>
                               </div>
 
                               <div className="flex items-center gap-2 sm:gap-3">
                                 <Button
                                   size="icon"
-                                  onClick={() => updateReady(item, -1)}
+                                  onClick={() => updateReadyQuantity(item, -1)}
                                   variant="outline"
-                                  disabled={item.readyQuantity === 0}
+                                  disabled={
+                                    item.readyQuantity === 0 || loadingUpdate
+                                  }
                                   className="h-10 w-10 sm:h-14 sm:w-14"
                                 >
                                   <Minus className="h-4 w-4 sm:h-5 sm:w-5" />
                                 </Button>
                                 <Button
                                   size="icon"
-                                  onClick={() => updateReady(item, 1)}
+                                  onClick={() => updateReadyQuantity(item, 1)}
                                   variant="outline"
-                                  disabled={item.readyQuantity >= item.quantity}
+                                  disabled={item.readyQuantity >= item.quantity || loadingUpdate}
                                   className="h-10 w-10 sm:h-14 sm:w-14"
                                 >
                                   <Plus className="h-4 w-4 sm:h-5 sm:w-5" />

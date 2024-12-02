@@ -214,4 +214,27 @@ router.put("/:id/ready-quantity", async (req, res) => {
   }
 });
 
+router.put("/:id/comments", async (req, res) => {
+  const { id } = req.params;
+  const { comments } = req.body;
+
+  try {
+    const orderItem = await OrderItem.getById(id);
+    if (!orderItem) {
+      return res.status(404).json({ error: "OrderItem not found" });
+    }
+
+    orderItem.comments = comments;
+    await orderItem.save();
+    const order = Order.getById(orderItem.orderId);
+    const enhancedOrder = order.getEnhancedOrder();
+    req.io.emit("orderChanged", { action: "updated", order: enhancedOrder });
+    res.json(orderItem);
+  } catch (error) {
+    console.log(error);
+    
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

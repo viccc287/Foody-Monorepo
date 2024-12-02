@@ -29,6 +29,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
@@ -479,7 +480,7 @@ export default function Stock() {
                 sortConfig={sortConfig}
                 columns={tableHeaderColumns}
               />
-              <TableCell>Acciones</TableCell>
+              <TableHead>Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

@@ -3,7 +3,7 @@ import {jwtDecode} from "jwt-decode";
 const TOKEN_KEY = "token";
 
 interface TokenPayload {
-    role: string;
+    role: 'manager' | 'cashier' | 'waiter' | 'cook';
     email: string;
     name: string;
     lastName: string;

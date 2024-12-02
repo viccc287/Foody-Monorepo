@@ -24,10 +24,12 @@ export interface Order extends NewOrder {
   createdAt: string;
   updatedAt: string;
   paymentMethod: string | null;
+  cancelledById: number | null;
   cancelledAt: string | null;
   cancelReason: string | null;
   status: string;
   billedById: number | null;
+  billedAt: string | null;
   ready: boolean;
   orderItems: OrderItem[];
 }

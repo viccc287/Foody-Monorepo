@@ -14,7 +14,7 @@ class Agent {
         this.email = email;
         this.pin = pin;
         this.role = role;
-        this.isActive = isActive !== undefined ? isActive : 1;
+        this.isActive = !!isActive;
     }
 
     static getAll() {
@@ -74,6 +74,7 @@ class Agent {
     static async authenticate(email, pin) {
         const agent = this.getByEmail(email);
         if (!agent) return null;
+        if (!agent.isActive) return null;
         if (agent.pin !== pin) return null;
         return agent;
     }

@@ -1,5 +1,3 @@
-"use client";
-
 import {
   Accordion,
   AccordionContent,
@@ -8,49 +6,60 @@ import {
 } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  CheckCircle,
-  ClipboardList,
-  Clock,
-  Coins,
-  DollarSign,
-  Package,
-  Percent,
-  XCircle
-} from "lucide-react";
-import {
-  Bar,
-  BarChart,
-  Legend,
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-} from "recharts";
-
-import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  CheckCircle,
+  ClipboardList,
+  Clock,
+  ClockAlert,
+  Coins,
+  DollarSign,
+  Percent,
+  Ticket,
+  XCircle,
+} from "lucide-react";
+import { Bar, BarChart, Legend, XAxis, YAxis } from "recharts";
+import NoShownIf from "../NoShownIf";
 
 const MXN = new Intl.NumberFormat("es-MX", {
   style: "currency",
   currency: "MXN",
 });
 
+import { useUserInfo } from "@/lib/useUserInfo";
 import type { DashboardStats } from "@/types";
+import { format, parseISO } from "date-fns";
+import { es } from "date-fns/locale";
 
-type OverviewCardsProps = Partial<DashboardStats> & {
-  totalHistoricSales: number;
-  totalHistoricTips: number;
-  totalHistoricDiscounts: number;
-  totalHistoricOrderCount: number;
+type OverviewCardsProps = DashboardStats & {
+  loading: boolean;
 };
 
+function formatMinutes(minutes: number) {
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = Math.round(minutes % 60);
+
+  if (hours > 0) {
+    if (remainingMinutes === 0) {
+      return `${hours} hr`;
+    }
+    return `${hours} hr ${remainingMinutes} min`;
+  }
+
+  return `${minutes} min`;
+}
+
 export function OverviewCards({
-  totalHistoricSales = 0,
-  totalHistoricTips = 0,
-  totalHistoricDiscounts = 0,
-  totalHistoricOrderCount = 0,
+  historicTotals = {
+    totalSales: 0,
+    totalTips: 0,
+    totalDiscounts: 0,
+    orderCount: 0,
+  },
   activeOrders = 0,
   cancelledOrders = 0,
   completedOrders = 0,
@@ -64,33 +73,42 @@ export function OverviewCards({
   hourlyDistribution = [],
   topSellingItems = [],
   period = { startDate: "", endDate: "" },
+  salesByPeriod = { type: "daily", data: [] },
+  loading,
 }: OverviewCardsProps) {
-  return (
-    <>
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 auto-rows-auto">
-       
+  const { isRole } = useUserInfo();
+
+  return loading ? (
+    <OverviewCardsSkeleton />
+  ) : (
+    <div className="flex flex-col 2xl:flex-row gap-4 items-start">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 auto-rows-auto 2xl:w-[60%]">
         <Card className="col-span-2 row-span-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Ventas
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Ventas</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-4xl font-bold">{MXN.format(totalSales)}</div>
+
             <p className="text-xs text-muted-foreground mt-1">
-              {((totalSales / totalHistoricSales) * 100).toFixed(2)}% del total
-              histórico
+              {`${new Date(period.startDate).toLocaleDateString()} - ${new Date(
+                period.endDate
+              ).toLocaleDateString()}`}
+              {Number.isNaN(totalSales / historicTotals.totalSales)
+                ? null
+                : ` | ${(
+                    (totalSales / historicTotals.totalSales) *
+                    100
+                  ).toFixed(2)}% del valor histórico`}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Descuentos
-            </CardTitle>
-            <Percent className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Descuentos</CardTitle>
+            <Ticket className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -101,22 +119,18 @@ export function OverviewCards({
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Propinas
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Propinas</CardTitle>
             <Coins className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{MXN.format(totalTips)}</div>
           </CardContent>
         </Card>
-      
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Órdenes 
-            </CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Órdenes</CardTitle>
+            <ClipboardList className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{orderCount}</div>
@@ -128,13 +142,13 @@ export function OverviewCards({
             <CardTitle className="text-sm font-medium">
               Órdenes activas
             </CardTitle>
-            <ClipboardList className="h-4 w-4 text-muted-foreground" />
+            <ClockAlert className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{activeOrders}</div>
           </CardContent>
         </Card>
-     
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -182,7 +196,7 @@ export function OverviewCards({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {averageTimeBetweenCreatedAndBilled} min
+              {formatMinutes(averageTimeBetweenCreatedAndBilled)}
             </div>
           </CardContent>
         </Card>
@@ -190,7 +204,7 @@ export function OverviewCards({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Tasa de conversión
+              Tasa de completado
             </CardTitle>
             <Percent className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -210,7 +224,7 @@ export function OverviewCards({
                   Ventas totales
                 </h3>
                 <p className="text-4xl font-bold">
-                  {MXN.format(totalHistoricSales)}
+                  {MXN.format(historicTotals.totalSales)}
                 </p>
               </div>
               <div className="flex flex-col items-start">
@@ -218,7 +232,7 @@ export function OverviewCards({
                   Propinas totales
                 </h3>
                 <p className="text-2xl font-bold">
-                  {MXN.format(totalHistoricTips)}
+                  {MXN.format(historicTotals.totalTips)}
                 </p>
               </div>
               <div className="flex flex-col items-start">
@@ -226,132 +240,282 @@ export function OverviewCards({
                   Descuentos totales
                 </h3>
                 <p className="text-2xl font-bold">
-                  {MXN.format(totalHistoricDiscounts)}
+                  {MXN.format(historicTotals.totalDiscounts)}
                 </p>
               </div>
               <div className="flex flex-col items-start">
                 <h3 className="text-sm font-medium text-muted-foreground">
                   Órdenes totales
                 </h3>
-                <p className="text-2xl font-bold">{totalHistoricOrderCount}</p>
+                <p className="text-2xl font-bold">
+                  {historicTotals.orderCount}
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
-      <Accordion type="multiple" className="w-full">
-        <AccordionItem value="item-1">
-          <AccordionTrigger>Distribución horaria de órdenes</AccordionTrigger>
-          <AccordionContent>
-            <Card>
-              <CardContent className="pt-6">
-                <ChartContainer
-                  config={{
-                    orderCount: {
-                      label: "Número de órdenes",
-                      color: "hsl(var(--chart-1))",
-                    },
-                  }}
-                  className="h-[300px] w-full"
-                >
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={hourlyDistribution}>
-                      <XAxis
-                        dataKey="hour"
-                        stroke="#888888"
-                        fontSize={12}
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <YAxis
-                        stroke="#888888"
-                        fontSize={12}
-                        tickLine={false}
-                        axisLine={false}
-                        tickFormatter={(value) => `${value}`}
-                      />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar
-                        dataKey="orderCount"
-                        fill="var(--color-orderCount)"
-                        radius={[4, 4, 0, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
-              </CardContent>
-            </Card>
-          </AccordionContent>
-        </AccordionItem>
-
-        <AccordionItem value="item-2">
-          <AccordionTrigger>
-            Artículos más vendidos
-          </AccordionTrigger>
-          <AccordionContent>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <ChartContainer
-                    config={{
-                      quantity: {
-                        label: "Cantidad vendida",
-                        color: "hsl(var(--chart-1))",
-                      },
-                    }}
-                    className="h-[300px] w-full"
-                  >
-                   
+      {isRole("manager") && (
+        <Accordion
+          type="multiple"
+          className="w-full 2xl:w-[40%]"
+          defaultValue={["item-1"]}
+        >
+          <AccordionItem value="item-1">
+            <AccordionTrigger>Ventas por periodo</AccordionTrigger>
+            <AccordionContent>
+              <NoShownIf condition={salesByPeriod.data.length === 0}>
+                <Card>
+                  <CardContent className="pt-6">
+                    <CardHeader>
+                      <CardTitle className="text-muted-foreground text-xl">
+                        {salesByPeriod.type === "daily"
+                          ? "Por día"
+                          : salesByPeriod.type === "weekly"
+                          ? "Por semana"
+                          : salesByPeriod.type === "monthly"
+                          ? "Por mes"
+                          : "Por año"}
+                      </CardTitle>
+                    </CardHeader>
+                    <ChartContainer
+                      config={{
+                        totalSales: {
+                          label: "Ventas",
+                          color: "hsl(var(--chart-1))",
+                        },
+                        totalTips: {
+                          label: "Propinas",
+                          color: "hsl(var(--chart-4))",
+                        },
+                        totalDiscounts: {
+                          label: "Descuentos",
+                          color: "hsl(var(--chart-2))",
+                        },
+                      }}
+                      className="h-[300px] w-full"
+                    >
                       <BarChart
-                        data={topSellingItems}
-                        layout="vertical"
-                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                      >
-                        <XAxis type="number" />
-                        <YAxis dataKey="name" type="category" width={150} />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <Legend />
-                        <Bar
-                          dataKey="quantity"
-                          fill="var(--color-quantity)"
-                          name="Cantidad"
-                        />
-                      </BarChart>
-                  </ChartContainer>
-                  <ChartContainer
-                    config={{
-                      revenue: {
-                        label: "Ingresos",
-                        color: "hsl(var(--chart-2))",
-                      },
-                    }}
-                    className="h-[300px]"
-                  >
-                      <BarChart
-                        data={topSellingItems}
-                        layout="vertical"
-                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                        data={salesByPeriod.data}
+                        margin={{ top: 5, right: 15, left: 15, bottom: 5 }}
                       >
                         <XAxis
-                          type="number"
+                          dataKey="periodStart"
+                          stroke="#888888"
+                          fontSize={12}
+                          tickLine={false}
+                          axisLine={false}
+                          tickFormatter={(value) =>
+                            format(parseISO(value), "PP", { locale: es })
+                          }
+                        />
+                        <YAxis
+                          yAxisId="left"
+                          stroke="#888888"
+                          fontSize={12}
+                          tickLine={false}
+                          axisLine={false}
                           tickFormatter={(value) => `$${value}`}
                         />
-                        <YAxis dataKey="name" type="category" width={150} />
+                        <YAxis
+                          yAxisId="right"
+                          orientation="right"
+                          stroke="#888888"
+                          fontSize={12}
+                          tickLine={false}
+                          axisLine={false}
+                        />
                         <ChartTooltip content={<ChartTooltipContent />} />
                         <Legend />
                         <Bar
-                          dataKey="revenue"
-                          fill="var(--color-revenue)"
-                          name="Ingresos"
+                          dataKey="totalSales"
+                          fill="var(--color-totalSales)"
+                          radius={[4, 4, 0, 0]}
+                          yAxisId="left"
+                          name="Ventas"
+                        />
+                        <Bar
+                          dataKey="totalTips"
+                          fill="var(--color-totalTips)"
+                          radius={[4, 4, 0, 0]}
+                          yAxisId="left"
+                          name="Propinas"
+                        />
+                        <Bar
+                          dataKey="totalDiscounts"
+                          fill="var(--color-totalDiscounts)"
+                          radius={[4, 4, 0, 0]}
+                          yAxisId="left"
+                          name="Descuentos"
                         />
                       </BarChart>
-                  </ChartContainer>
+                    </ChartContainer>
+                  </CardContent>
+                </Card>
+              </NoShownIf>
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="item-2">
+            <AccordionTrigger>Artículos más vendidos</AccordionTrigger>
+            <AccordionContent>
+              <NoShownIf condition={topSellingItems.length === 0}>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      <ChartContainer
+                        config={{
+                          quantity: {
+                            label: "Cantidad vendida",
+                            color: "hsl(var(--chart-1))",
+                          },
+                        }}
+                        className="h-[300px] w-full"
+                      >
+                        <BarChart
+                          data={topSellingItems}
+                          layout="vertical"
+                          margin={{ top: 5, right: 15, left: 15, bottom: 5 }}
+                        >
+                          <XAxis type="number" />
+                          <YAxis dataKey="name" type="category" width={150} />
+                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <Legend />
+                          <Bar
+                            dataKey="quantity"
+                            fill="var(--color-quantity)"
+                            name="Cantidad"
+                          />
+                        </BarChart>
+                      </ChartContainer>
+                      <ChartContainer
+                        config={{
+                          revenue: {
+                            label: "Ingresos",
+                            color: "hsl(var(--chart-2))",
+                          },
+                        }}
+                        className="h-[300px] w-full"
+                      >
+                        <BarChart
+                          data={topSellingItems}
+                          layout="vertical"
+                          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                        >
+                          <XAxis
+                            type="number"
+                            tickFormatter={(value) => `$${value}`}
+                          />
+                          <YAxis dataKey="name" type="category" width={150} />
+                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <Legend />
+                          <Bar
+                            dataKey="revenue"
+                            fill="var(--color-revenue)"
+                            name="Ingresos"
+                          />
+                        </BarChart>
+                      </ChartContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              </NoShownIf>
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="item-3">
+            <AccordionTrigger>Distribución horaria de órdenes</AccordionTrigger>
+            <AccordionContent>
+              <NoShownIf condition={hourlyDistribution.length === 0}>
+                <Card>
+                  <CardContent className="pt-6">
+                    <ChartContainer
+                      config={{
+                        orderCount: {
+                          label: "Número de órdenes",
+                          color: "hsl(var(--chart-1))",
+                        },
+                      }}
+                      className="h-[300px] w-full"
+                    >
+                      <BarChart
+                        data={hourlyDistribution}
+                        margin={{ top: 5, right: 15, left: 15, bottom: 5 }}
+                      >
+                        <XAxis
+                          dataKey="hour"
+                          stroke="#888888"
+                          fontSize={12}
+                          tickLine={false}
+                          axisLine={false}
+                        />
+                        <YAxis
+                          stroke="#888888"
+                          fontSize={12}
+                          tickLine={false}
+                          axisLine={false}
+                          tickFormatter={(value) => `${value}`}
+                        />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Bar
+                          dataKey="orderCount"
+                          fill="var(--color-orderCount)"
+                          radius={[4, 4, 0, 0]}
+                        />
+                      </BarChart>
+                    </ChartContainer>
+                  </CardContent>
+                </Card>
+              </NoShownIf>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      )}
+    </div>
+  );
+}
+
+function OverviewCardsSkeleton() {
+  return (
+    <div className="flex flex-col 2xl:flex-row gap-4 items-start">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 auto-rows-auto w-full">
+        <Card className="col-span-2 row-span-1">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-4 w-4" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-4 w-3/4 mt-1" />
+          </CardContent>
+        </Card>
+
+        {Array.from({ length: 8 }).map((_, index) => (
+          <Card key={index}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-4 w-4" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-10 w-full" />
+            </CardContent>
+          </Card>
+        ))}
+
+        <Card className="col-span-full">
+          <CardHeader>
+            <Skeleton className="h-6 w-40" />
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="flex flex-col items-start">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-10 w-full" />
                 </div>
-              </CardContent>
-            </Card>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-    </>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }

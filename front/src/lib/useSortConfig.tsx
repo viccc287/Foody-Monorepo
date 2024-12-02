@@ -20,7 +20,7 @@ function useSortConfig<T>(setItems: React.Dispatch<React.SetStateAction<T[]>>) {
       }
       setSortConfig({ key, direction });
       setItems((prevItems) =>
-        [...prevItems].sort((a, b) => {
+        [...prevItems].sort((a, b) => {          
           const aValue = a[key] || "";
           const bValue = b[key] || "";
           if (aValue < bValue) return direction === "asc" ? -1 : 1;

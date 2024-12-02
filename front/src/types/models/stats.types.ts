@@ -14,6 +14,19 @@ interface Period {
   endDate: string;
 }
 
+interface SalesByPeriod {
+  type: "daily" | "weekly" | "monthly" | "yearly";
+  data: SalesByPeriodData[];
+}
+
+interface SalesByPeriodData{
+  periodStart: string;
+  orderCount: number;
+  totalSales: number;
+  totalTips: number;
+  totalDiscounts: number;
+}
+
 export interface DashboardStats {
   activeOrders: number;
   cancelledOrders: number;
@@ -28,9 +41,11 @@ export interface DashboardStats {
   hourlyDistribution: HourlyDistributionItem[];
   topSellingItems: TopSellingItemInfo[];
   period: Period;
+  salesByPeriod: SalesByPeriod;
+  historicTotals: HistoricTotals;
 }
 
-export interface TotalHistoricValues {
+export interface HistoricTotals {
   orderCount: number;
   totalSales: number;
   totalTips: number;

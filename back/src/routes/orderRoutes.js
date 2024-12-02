@@ -65,6 +65,7 @@ router.get("/dashboard-stats", (req, res) => {
   try {
     let startDate = req.query.startDate ? new Date(req.query.startDate) : null;
     let endDate = req.query.endDate ? new Date(req.query.endDate) : null;
+    let claimedById = req.query.claimedById || null;
 
     // Validate dates
     if (
@@ -78,7 +79,7 @@ router.get("/dashboard-stats", (req, res) => {
     startDate = startDate?.toISOString();
     endDate = endDate?.toISOString();
 
-    const stats = Order.getDashboardStats(startDate, endDate);
+    const stats = Order.getDashboardStats(startDate, endDate, claimedById);
     res.json(stats);
   } catch (error) {
     
@@ -182,6 +183,8 @@ router.post("/", (req, res) => {
 
     res.status(201).json(enhancedOrder);
   } catch (error) {
+    console.log(error);
+    
     res.status(500).json({ error: "Failed to create order. " + error.message });
   }
 });

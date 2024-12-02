@@ -1,11 +1,18 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { MinusCircle, PlusCircle, RefreshCcw, Trash2 } from "lucide-react";
+import {
+  Check,
+  Edit,
+  MinusCircle,
+  PlusCircle,
+  RefreshCcw,
+  Trash2,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -36,10 +43,14 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 import AlertDialogDelete from "@/components/AlertDialogDelete";
 import ConfirmActionDialogButton from "@/components/ConfirmActionDialogButton";
+import CookOrdersPage from "@/components/orders/CookOrdersPage";
 import ItemSearchSidebar from "@/components/orders/ItemSearchSidebar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import { getProgressColor } from "@/lib/ProgressColor";
 import { useAlert } from "@/lib/useAlert";
+import { cn } from "@/lib/utils";
 import TokenService from "@/services/tokenService";
 import {
   AgentFullName,
@@ -51,10 +62,7 @@ import {
   OrderItem,
   StockItem,
 } from "@/types";
-import CookOrdersPage from "@/components/orders/CookOrdersPage";
-import { cn } from "@/lib/utils";
 import { io } from "socket.io-client";
-import { Progress } from "@/components/ui/progress";
 
 interface NotEnoughStockItem extends StockItem {
   required: number;
@@ -103,15 +111,21 @@ const MXN = new Intl.NumberFormat("es-MX", {
   currency: "MXN",
 });
 
-const socket = io(SERVER_URL);
-
-const ProgressColor = {
-  VERY_LOW: "bg-red-500",
-  LOW: "bg-amber-500",
-  REGULAR: "bg-yellow-500",
-  HIGH: "bg-lime-500",
-  MAX: "bg-green-500",
+const sortOrders = (ordersToSort: Order[]) => {
+  return ordersToSort.sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
 };
+
+const getPercentageOfReadyItems = (order: Order) => {
+  if (!order.orderItems) return 0;
+  const readyItems = order.orderItems.filter(
+    (item) => item.readyQuantity === item.quantity
+  );
+  return (readyItems.length / order.orderItems.length) * 100;
+};
+
+const socket = io(SERVER_URL);
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -124,7 +138,8 @@ export default function OrdersPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<OrderItem | null>(null);
   const [agentNames, setAgentNames] = useState<AgentFullName[]>([]);
-
+  const [isEditingComments, setIsEditingComments] = useState(false);
+  const [commentValue, setCommentValue] = useState("");
   const [ticketDialogOpen, setTicketDialogOpen] = useState(false);
 
   const [userInfo, setUserInfo] = useState(TokenService.getUserInfo());
@@ -164,12 +179,10 @@ export default function OrdersPage() {
         switch (action) {
           case "created":
             if (order) {
-              updatedOrders.push(order);
+              updatedOrders.unshift(order);
             }
             break;
           case "updated":
-            console.log("received updated order from socket", order);
-
             if (order) {
               if (order.status === "paid") {
                 setOrderCharged(order);
@@ -184,7 +197,6 @@ export default function OrdersPage() {
               }
 
               const index = updatedOrders.findIndex((o) => o.id === order.id);
-              console.log("index", index);
 
               if (index !== -1) {
                 updatedOrders[index] = order;
@@ -205,16 +217,12 @@ export default function OrdersPage() {
         return updatedOrders;
       });
       if (action === "created" && order) {
-        console.log("changing selected order from created", order);
-
         setSelectedOrder(order as Order);
       } else if (
         action === "updated" &&
         order &&
         selectedOrder?.id === order.id
       ) {
-        console.log("changing selected order from updated", order);
-
         setSelectedOrder(order as Order);
       } else if (action === "deleted" && selectedOrder?.id === orderId) {
         setSelectedOrder(null);
@@ -224,8 +232,6 @@ export default function OrdersPage() {
   );
 
   const fetchOrders = useCallback(async () => {
-    console.log("fetchOrders");
-
     try {
       if (!userInfo) return;
 
@@ -236,10 +242,9 @@ export default function OrdersPage() {
       const data = await fetch(url).then((res) => res.json());
       const ordersData: Order[] = data.orders;
 
-      setOrders(ordersData);
+      setOrders(sortOrders(ordersData));
     } catch (error) {
       console.error("Error fetching orders:", error);
-      // Considera agregar manejo de estado de error y feedback en la UI
     }
   }, [userInfo, userRole]);
 
@@ -370,7 +375,6 @@ export default function OrdersPage() {
     if (menuItem.printLocations.length > 0)
       alert("Imprimiendo", `Imprimiendo en ${menuItem.printLocations}`);
 
-    // Find if item already exists in order
     const existingItem = selectedOrder.orderItems?.find(
       (item) => item.menuItemId === menuItem.id
     );
@@ -491,7 +495,7 @@ export default function OrdersPage() {
     setSelectedOrder(updatedOrder);
   };
 
-  const cancelOrder = async () => {
+  const cancelOrder = async (cancelReason? : string) => {
     if (!selectedOrder) return;
 
     const response = await fetch(
@@ -501,7 +505,7 @@ export default function OrdersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           status: "cancelled",
-          cancelReason: "Cancelada por el usuario",
+          cancelReason: cancelReason || "Cancelada por el usuario",
         }),
       }
     );
@@ -523,6 +527,36 @@ export default function OrdersPage() {
     }
     setShowDeleteDialog(false);
     setItemToDelete(null);
+  };
+
+  const updateItemComments = async (orderItem: OrderItem, comments: string) => {
+    if (
+      !selectedOrder ||
+      !orderItem ||
+      !comments ||
+      comments === orderItem.comments
+    )
+      return setIsEditingComments(false);
+
+    const response = await fetch(
+      `${ORDER_ITEM_FETCH_URL}/${orderItem.id}/comments`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          comments,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      console.error("Failed to update comments");
+      alert("Error", "Error al actualizar los comentarios", "error");
+      setIsEditingComments(false);
+      return;
+    }
+    setIsEditingComments(false);
+    alert("Actualizado", "Comentarios actualizados");
   };
 
   async function onOrderSubmit(data: NewOrder) {
@@ -582,7 +616,7 @@ export default function OrdersPage() {
   };
 
   return !isRole(userRole, Roles.COOK) ? (
-    <div className="flex h-full grow">
+    <div className="flex h-full grow flex-col md:flex-row">
       {/* TICKET DIALOG */}
       {hasRole(userRole, [Roles.MANAGER, Roles.CASHIER]) && (
         <Dialog open={ticketDialogOpen} onOpenChange={setTicketDialogOpen}>
@@ -694,7 +728,7 @@ export default function OrdersPage() {
         </DialogContent>
       </Dialog>
       {/* Left Sidebar */}
-      <div className="flex flex-col w-64 border-r p-4 h-full">
+      <div className="flex flex-col md:w-64 border-r p-2 md:p-4 md:h-full max-h-64">
         <div className="flex flex-col mb-4 gap-4 ">
           <div className="flex gap-2 items-center justify-between">
             <h2 className="text-xl font-semibold">Mesas</h2>
@@ -712,10 +746,25 @@ export default function OrdersPage() {
             <Button
               key={order.id}
               variant={selectedOrder?.id === order.id ? "secondary" : "ghost"}
-              className="w-full justify-start mb-2"
+              className="w-full justify-between mb-1"
               onClick={() => setSelectedOrder(order)}
             >
               {order.customer}
+              {(() => {
+                const progress = getPercentageOfReadyItems(order);
+                return (
+                  <div
+                    className={cn(
+                      progress < 25
+                        ? "bg-red-500"
+                        : progress < 100
+                        ? "bg-amber-500"
+                        : "bg-green-500",
+                      "size-2 rounded-full"
+                    )}
+                  />
+                );
+              })()}
             </Button>
           ))}
         </ScrollArea>
@@ -727,7 +776,7 @@ export default function OrdersPage() {
         onConfirm={confirmDeleteItem}
         onCancel={() => setShowDeleteDialog(false)}
       />{" "}
-      <div className="flex flex-col grow p-6 h-full gap-6">
+      <div className="flex flex-col grow p-6 h-full gap-6 bg-gray-100 md:bg-white">
         {selectedOrder ? (
           <>
             <div className="flex items-start justify-center gap-2 flex-col">
@@ -750,26 +799,29 @@ export default function OrdersPage() {
               <div className="flex ml-auto gap-2"></div>
             </div>
             <ScrollArea className="grow">
-              <div className="grid grid-cols-[repeat(auto-fit,minmax(350px,1fr))] gap-4 grow">
+              <div className="grid md:grid-cols-[repeat(auto-fit,minmax(350px,1fr))] gap-4 grow">
                 {selectedOrder.orderItems?.map((item) => (
                   <Card key={item.id} className="relative">
                     <CardContent className="p-4 gap-2 flex justify-between items-center">
-                      <div>
-                        <div className="flex items-center gap-2">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex lg:items-center gap-2 flex-col lg:flex-row">
                           <span className="font-medium">
                             {findMenuItemById(item.menuItemId)?.name ||
                               "Artículo eliminado"}
                           </span>
-                          {item.appliedPromos.length > 0 ? (
-                            <Badge className="text-xs bg-green-600">
-                              Promo
-                            </Badge>
-                          ) : null}
-                          <span className="text-xs text-green-600">
-                            {item.discountApplied
-                              ? `-${MXN.format(item.discountApplied)}`
-                              : null}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            {" "}
+                            {item.appliedPromos.length > 0 ? (
+                              <Badge className="text-xs bg-green-600 w-fit">
+                                Promo
+                              </Badge>
+                            ) : null}
+                            <span className="text-xs text-green-600">
+                              {item.discountApplied
+                                ? `-${MXN.format(item.discountApplied)}`
+                                : null}
+                            </span>
+                          </div>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <span>
@@ -788,18 +840,60 @@ export default function OrdersPage() {
                               className="h-6 w-6"
                               onClick={() => handleDeleteItem(item)}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 />
                             </Button>
                           )}
                         </div>
-                        <span className="text-xs text-muted-foreground">
-                          {item.comments ? "-" + item.comments : null}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {item.readyQuantity}/{item.quantity} listos
-                        </span>
+                        <div className="flex flex-col gap-2">
+                          {item.comments && (
+                            <div className="flex gap-2 items-center">
+                              {isEditingComments ? (
+                                <Input
+                                  className=""
+                                  defaultValue={item.comments}
+                                  onChange={(e) =>
+                                    setCommentValue(e.target.value)
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      updateItemComments(item, commentValue);
+                                    }
+                                  }}
+                                />
+                              ) : (
+                                <span className="text-xs font-semibold text-blue-700">
+                                  {item.comments}
+                                </span>
+                              )}
+                              {isEditingComments ? (
+                                <Button
+                                  size="icon"
+                                  variant="outline"
+                                  className="size-6 text-muted-foreground"
+                                  onClick={() =>
+                                    updateItemComments(item, commentValue)
+                                  }
+                                >
+                                  <Check />
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="icon"
+                                  variant="outline"
+                                  className="size-6 text-muted-foreground"
+                                  onClick={() => setIsEditingComments(true)}
+                                >
+                                  <Edit />
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                          <span className="text-xs text-muted-foreground">
+                            {item.readyQuantity}/{item.quantity} listos
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-4 flex-col">
                         <div className="flex justify-center flex-col">
                           {item.discountApplied !== null &&
                             item.discountApplied > 0 && (
@@ -816,20 +910,20 @@ export default function OrdersPage() {
                           <Button
                             size="icon"
                             variant="ghost"
-                            className="h-6 w-6"
+                            className="lg:size-6"
                             onClick={() => updateItemQuantityOfOrder(item, -1)}
                           >
-                            <MinusCircle className="h-4 w-4" />
+                            <MinusCircle />
                           </Button>
 
                           <span>{item.quantity}</span>
                           <Button
                             size="icon"
                             variant="ghost"
-                            className="h-6 w-6"
+                            className="lg:size-6"
                             onClick={() => updateItemQuantityOfOrder(item, 1)}
                           >
-                            <PlusCircle className="h-4 w-4" />
+                            <PlusCircle />
                           </Button>
                         </div>
                       </div>
@@ -840,17 +934,7 @@ export default function OrdersPage() {
                           <Progress
                             value={progress}
                             className="w-full h-[3px] absolute bottom-0 left-0 opacity-75 "
-                            indicatorClassName={cn(
-                              progress < 25
-                                ? ProgressColor.VERY_LOW
-                                : progress < 50
-                                ? ProgressColor.LOW
-                                : progress < 75
-                                ? ProgressColor.REGULAR
-                                : progress < 100
-                                ? ProgressColor.HIGH
-                                : ProgressColor.MAX
-                            )}
+                            indicatorClassName={getProgressColor(progress)}
                           />
                         );
                       })()}
@@ -900,7 +984,10 @@ export default function OrdersPage() {
                         description="¿Estás seguro que deseas cancelar la orden?"
                         variant="destructive"
                         className="grow"
+                        initialTextValue="Cancelada por el usuario"
+                        textValuePlaceholder="Motivo de cancelación"
                         requireElevation
+                        requireTextValue
                       >
                         Cancelar
                       </ConfirmActionDialogButton>

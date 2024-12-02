@@ -91,7 +91,7 @@ function ItemSearchSidebar({
   );
 
   return (
-    <div className="flex flex-col max-w-72 grow border-l p-4 h-full">
+    <div className="flex flex-col  md:max-w-56 lg:max-w-72 grow border-l p-4 h-full">
       <div className="flex flex-col mb-4 gap-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">
@@ -132,14 +132,14 @@ function ItemSearchSidebar({
           )}
         </div>
       </div>
-      <ScrollArea className="h-full">
+      <ScrollArea className="h-72 md:h-full">
         <div className="grid gap-2">
           {menuItemSearchQuery
             ? // Show filtered items across all categories when searching
               filteredMenuItems.map((item, index) => (
                 <Card key={item.id}>
                   <CardHeader className="p-4">
-                    <div className="flex justify-between items-center gap-4 flex-wrap xl:flex-nowrap">
+                    <div className="flex justify-between items-center gap-4 h-fit sm:flex-wrap">
                       <div>
                         <CardTitle className="text-sm">{item.name}</CardTitle>
                         <p className="text-sm text-muted-foreground">

@@ -14,6 +14,7 @@ class Order {
     createdAt,
     updatedAt,
     paymentMethod,
+    cancelledById,
     cancelledAt,
     cancelReason,
     status,
@@ -31,6 +32,7 @@ class Order {
     this.createdAt = createdAt || null;
     this.updatedAt = updatedAt || null;
     this.paymentMethod = paymentMethod || null;
+    this.cancelledById = cancelledById || null;
     this.cancelledAt = cancelledAt || null;
     this.cancelReason = cancelReason || null;
     this.status = status || "active";
@@ -41,7 +43,7 @@ class Order {
   }
 
   static getAll() {
-    const stmt = db.prepare(`SELECT * FROM ${this.tableName}`);
+    const stmt = db.prepare(`SELECT * FROM ${this.tableName} ORDER BY createdAt DESC`);
     const rows = stmt.all();
 
     return rows.map((row) => new Order(row));
@@ -71,7 +73,7 @@ class Order {
       query += ` WHERE ${whereClause.join(" AND ")}`;
     }
 
-    query += " ORDER BY createdAt DESC";
+    query += " ORDER BY updatedAt DESC";
 
     let countQuery = `SELECT COUNT(*) as total FROM ${this.tableName}`;
     if (whereClause.length > 0) {
@@ -121,38 +123,53 @@ class Order {
     return result;
   }
 
-  static getDashboardStats(startDate = null, endDate = null) {
+  static getDashboardStats(
+    startDate = null,
+    endDate = null,
+    claimedById = null
+  ) {
     let params = [];
     let dateFilter = "";
+    let claimedByFilter = "";
 
     if (startDate) {
-      dateFilter += " AND createdAt >= ?";
+      dateFilter += " AND o.createdAt >= ?";
       params.push(startDate);
     }
 
     if (endDate) {
-      dateFilter += " AND createdAt <= ?";
+      dateFilter += " AND o.createdAt <= ?";
       params.push(endDate);
     }
 
-    // Main stats query
-    const query = `
-    SELECT 
-      SUM(CASE WHEN o.status = 'active' THEN 1 ELSE 0 END) as activeOrders,
-      SUM(CASE WHEN o.status = 'cancelled' THEN 1 ELSE 0 END) as cancelledOrders,
-      SUM(CASE WHEN o.status = 'paid' THEN 1 ELSE 0 END) as completedOrders,
-      SUM(o.total) as totalSales,
-      SUM(o.tip) as totalTips,
-      SUM(o.discountTotal) as totalDiscounts,
-      COUNT(*) as orderCount,
-      AVG(o.total) as averageOrderValue,
-      AVG(
-        (JULIANDAY(o.billedAt) - JULIANDAY(o.createdAt)) * 24 * 60
-      ) as averageTimeBetweenCreatedAndBilled
-    FROM "Order" o
-    WHERE o.status NOT IN ('unpaid')
-      ${dateFilter.replace(/createdAt/g, "o.createdAt")}
-  `;
+    if (claimedById) {
+      claimedByFilter = " AND o.claimedById = ?";
+      params.push(claimedById);
+    }
+
+    const mainStatsQuery = `
+  WITH 
+  FilteredOrders AS (
+    SELECT *
+    FROM "Order" o 
+    WHERE o.status NOT IN ('cancelled','unpaid')
+      ${dateFilter}
+      ${claimedByFilter}
+  )
+  SELECT 
+    SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as activeOrders,
+    SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelledOrders,
+    SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) as completedOrders,
+    SUM(total) as totalSales,
+    SUM(tip) as totalTips,
+    SUM(discountTotal) as totalDiscounts,
+    COUNT(*) as orderCount,
+    AVG(total) as averageOrderValue,
+    AVG(
+      (JULIANDAY(billedAt) - JULIANDAY(createdAt)) * 24 * 60
+    ) as averageTimeBetweenCreatedAndBilled
+  FROM FilteredOrders
+`;
 
     const hourlyQuery = `
     SELECT 
@@ -160,10 +177,22 @@ class Order {
       COUNT(*) as orderCount
     FROM "Order" o
     WHERE o.status NOT IN ('cancelled', 'unpaid')
-      ${dateFilter.replace(/createdAt/g, "o.createdAt")}
+      ${dateFilter}
+      ${claimedByFilter}
     GROUP BY hour
     ORDER BY hour ASC
   `;
+
+    const historicTotalsQuery = `
+  SELECT 
+    COUNT(*) as orderCount,
+    COALESCE(SUM(total), 0) totalSales,
+    COALESCE(SUM(tip), 0) as totalTips,
+    COALESCE(SUM(discountTotal), 0) as totalDiscounts
+  FROM "Order" o
+  WHERE status NOT IN ('cancelled', 'unpaid')
+    ${claimedByFilter}
+`;
 
     const topItemsQuery = `
     SELECT 
@@ -174,15 +203,74 @@ class Order {
     JOIN MenuItem m ON oi.menuItemId = m.id
     JOIN "Order" o ON oi.orderId = o.id
     WHERE o.status NOT IN ('cancelled', 'unpaid')
-      ${dateFilter.replace(/createdAt/g, "o.createdAt")}
+      ${dateFilter}
+      ${claimedByFilter}
     GROUP BY oi.menuItemId
     ORDER BY totalQuantity DESC
     LIMIT 5
   `;
 
-    const mainStats = db.prepare(query).get(...params);
+    const salesAggregationQuery = `
+  WITH DateRanges AS (
+    SELECT 
+      MIN(o.createdAt) as earliest_date,
+      MAX(o.createdAt) as latest_date,
+      (JULIANDAY(MAX(o.createdAt)) - JULIANDAY(MIN(o.createdAt))) as date_diff_days
+    FROM "Order" o
+    WHERE o.status NOT IN ('cancelled', 'unpaid')
+      ${dateFilter}
+      ${claimedByFilter}
+  )
+  SELECT 
+    CASE 
+      WHEN (SELECT date_diff_days FROM DateRanges) <= 31 THEN
+        date(o.createdAt, 'localtime')
+      WHEN (SELECT date_diff_days FROM DateRanges) <= 182 THEN
+        date(o.createdAt, 'localtime', 'weekday 0', '-7 days')
+      WHEN (SELECT date_diff_days FROM DateRanges) <= 730 THEN
+        date(o.createdAt, 'localtime', 'start of month')
+      ELSE
+        date(o.createdAt, 'localtime', 'start of year')
+    END as period_start,
+    COUNT(*) as order_count,
+    SUM(o.total) as total_sales,
+    SUM(o.tip) as total_tips,
+    SUM(o.discountTotal) as total_discounts
+  FROM "Order" o
+  WHERE o.status NOT IN ('cancelled', 'unpaid')
+    ${dateFilter}
+    ${claimedByFilter}
+  GROUP BY period_start
+  ORDER BY period_start ASC
+  `;
+
+    const salesByPeriodParams = [...params, ...params];
+
+
+    const mainStats = db.prepare(mainStatsQuery).get(...params);
+    const historicTotals = claimedById
+      ? db.prepare(historicTotalsQuery).get(claimedById)
+      : db.prepare(historicTotalsQuery).get();
     const hourlyDistribution = db.prepare(hourlyQuery).all(...params);
     const topItems = db.prepare(topItemsQuery).all(...params);
+    const salesByPeriod = db
+      .prepare(salesAggregationQuery)
+      .all(...salesByPeriodParams);
+
+    let aggregationType = "daily";
+    if (salesByPeriod.length > 0) {
+      const firstDate = new Date(salesByPeriod[0].period_start);
+      const secondDate = salesByPeriod[1]
+        ? new Date(salesByPeriod[1].period_start)
+        : null;
+
+      if (secondDate) {
+        const diffDays = (secondDate - firstDate) / (1000 * 60 * 60 * 24);
+        if (diffDays >= 365) aggregationType = "yearly";
+        else if (diffDays >= 28) aggregationType = "monthly";
+        else if (diffDays >= 7) aggregationType = "weekly";
+      }
+    }
 
     return {
       activeOrders: mainStats.activeOrders || 0,
@@ -192,11 +280,12 @@ class Order {
       totalTips: mainStats.totalTips || 0,
       totalDiscounts: mainStats.totalDiscounts || 0,
       orderCount: mainStats.orderCount || 0,
+      historicTotals,
       averageOrderValue:
         Math.round((mainStats.averageOrderValue || 0) * 100) / 100,
-      conversionRate: mainStats.totalOrders
+      conversionRate: mainStats.orderCount
         ? parseFloat(
-            ((mainStats.completedOrders / mainStats.totalOrders) * 100).toFixed(
+            ((mainStats.completedOrders / mainStats.orderCount) * 100).toFixed(
               2
             )
           )
@@ -213,6 +302,16 @@ class Order {
       period: {
         startDate: startDate || "all time",
         endDate: endDate || "now",
+      },
+      salesByPeriod: {
+        type: aggregationType,
+        data: salesByPeriod.map((period) => ({
+          periodStart: period.period_start,
+          orderCount: period.order_count,
+          totalSales: period.total_sales || 0,
+          totalTips: period.total_tips || 0,
+          totalDiscounts: period.total_discounts || 0,
+        })),
       },
     };
   }
@@ -281,7 +380,7 @@ class Order {
   #updateRecord() {
     const stmt = db.prepare(
       `UPDATE ${Order.tableName}
-            SET customer = ?, subtotal = ?, discountTotal = ?, total = ?, tip = ?, paymentMethod = ?, cancelledAt = ?, cancelReason = ?, status = ?, claimedById = ?, billedById = ?, billedAt = ?, createdAt = ?, updatedAt = ?, ready = ?
+            SET customer = ?, subtotal = ?, discountTotal = ?, total = ?, tip = ?, paymentMethod = ?, cancelledById = ?, cancelledAt = ?, cancelReason = ?, status = ?, claimedById = ?, billedById = ?, billedAt = ?, createdAt = ?, updatedAt = ?, ready = ?
             WHERE id = ?`
     );
     const result = stmt.run(
@@ -291,6 +390,7 @@ class Order {
       this.total,
       this.tip,
       this.paymentMethod,
+      this.cancelledById,
       this.cancelledAt,
       this.cancelReason,
       this.status,

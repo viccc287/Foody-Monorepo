@@ -1,5 +1,5 @@
 import { AppSidebar } from "@/components/AppSidebar";
-import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/toaster";
 import Agents from "@/pages/Agents";
 import Categories from "@/pages/Categories";
@@ -59,14 +59,15 @@ function AppLayout() {
   const isLoginRoute = location.pathname === "/login";
   const userInfo = TokenService.getUserInfo();
   const isMobile = useIsMobile();
+  const actualUrl = location.pathname;
 
   return (
     <SidebarProvider>
       <Toaster />
       {!isLoginRoute && userInfo && <AppSidebar />}
-      <main className="w-full h-[100svh] p-6 flex overflow-auto ">
+      <main className="w-full h-[100svh] p-1 sm:p-2 lg:p-6  flex overflow-auto ">
         <div className="size-full">
-          {isMobile && <SidebarTrigger />}
+          {isMobile && !actualUrl.endsWith("login") ? <SidebarTrigger /> : null}
           
           <Routes>
             <Route path="/login" element={<Login />} />

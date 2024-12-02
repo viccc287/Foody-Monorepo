@@ -51,7 +51,7 @@ router.post("/", (req, res) => {
     image,
     address,
     phone,
-    rfc,
+    rfc ?? null,
     email,
     pin,
     role,
