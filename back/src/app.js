@@ -23,6 +23,7 @@ app.use((req, res, next) => {
     next();
   });
   
+  app.use('/images', express.static('storage/images'));
 app.use("/authenticate", authenticateRoutes);
 
 app.use(authenticate);
@@ -36,6 +37,5 @@ app.use("/promos", promoRoutes);
 app.use("/categories", categoryRoutes)
 app.use("/suppliers", supplierRoutes)
 app.use("/config", configRoutes)
-app.use('/images', express.static('storage/images'));
 
 export default app;

@@ -1,0 +1,21 @@
+services:
+  backend:
+    build: ./back
+    ports:
+      - "3000:3000"
+    env_file:
+      - back/.env
+    volumes:
+      - storage:/app/storage
+
+  frontend:
+    build: ./front
+    ports:
+      - "5000:5000"
+    env_file:
+      - front/.env
+    depends_on:
+      - backend
+
+volumes:
+  storage:
