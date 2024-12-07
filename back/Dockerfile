@@ -1,8 +1,8 @@
-FROM node:22.11-slim
+FROM node:23-slim
 
 WORKDIR /app
 
-COPY package*.json ./
+COPY package.json package-lock.json ./
 COPY .env ./
 
 RUN npm install
