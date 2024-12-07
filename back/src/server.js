@@ -4,6 +4,7 @@ import http from "http";
 import { Server } from "socket.io";
 
 const PORT = 3000;
+const IP_ADDRESS = process.env.IP_ADDRESS || "localhost"
 
 const server = http.createServer(app);
 
@@ -23,7 +24,7 @@ io.on("connection", (socket) => {
   });
 });
 
-server.listen(PORT, () => {
-  console.log(process.env.RESTAURANT_NAME);
-  console.log(`Server is running on http://localhost:${PORT}`);
+server.listen(PORT, IP_ADDRESS, () => {
+  console.log(process.env.RESTAURANT_NAME || "Restaurant");
+  console.log(`Server is running on http://${IP_ADDRESS}:${PORT}`);
 });
